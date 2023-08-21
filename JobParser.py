@@ -1,20 +1,13 @@
 import asyncio
-import multiprocessing
-
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.firefox.service import Service
 from bardapi import Bard
-import feedparser
 from discordwebhook import Discord
 from collections import deque
 from queue import Queue
 from threading import Thread
 import time
-import pickle
-import re
 import os
 import ssl
 from bs4 import BeautifulSoup
@@ -22,6 +15,9 @@ import feedparser
 import re
 import discord as ds
 from discord.ext import commands
+# from models import Jobs, Proposals, db
+from app import app, Jobs, Proposals, db
+
 
 
 if hasattr(ssl, '_create_unverified_context'):
@@ -426,11 +422,22 @@ def broadcast_to_discord(job_dict, job_response=None):
     global discord
     print("Sending to Discord-------------- ")
     # print(job_dict)
-    job_dict.pop('Job Description')
+    job_description = job_dict.pop('Job Description')
+    print('job description', job_description)
     # create a list of formatted strings from the job_dict
     if job_response:
         # join the list into a single string with line breaks
         job_dict['proposal response'] = job_response
+    job_title = job_dict['Job Title']
+    job_link = job_dict['Job Link']
+    proposal_response = job_dict['proposal response']
+    with app.app_context():
+        new_job = Jobs(job_title=job_title, job_link=job_link, job_description=job_description)
+        db.session.add(new_job)
+        db.session.commit()
+        new_proposal = Proposals(proposal=proposal_response, job_id=new_job.id)
+        db.session.add(new_proposal)
+        db.session.commit()
 
     formatted_dict = [f'**{k}**: {v}' for k, v in job_dict.items()]
 

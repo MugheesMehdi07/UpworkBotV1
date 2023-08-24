@@ -17,7 +17,7 @@ import discord as ds
 from discord.ext import commands
 # from models import Jobs, Proposals, db
 from app import app, Jobs, Proposals, db
-
+import time
 
 
 if hasattr(ssl, '_create_unverified_context'):
@@ -37,7 +37,7 @@ exclude_keywords = ['shopify', 'wordpress', 'woocommerce', 'unreal', 'wix', 'web
                     'Word press', 'Php', 'Vba', 'Airtable']
 
 key_index = 0
-TEST = False
+TEST = True
 
 if TEST:
     webhook_url = webhook_url_test
@@ -80,10 +80,12 @@ def fetch_jobs():
 
 def process_jobs():
     global job_links
+    global flag
     print('Process Job')
 
     while True:
         try:
+            print('flag', flag)
             if flag == 'start':
                 if not job_links.empty():
                     job_dict = job_links.get()
@@ -432,12 +434,25 @@ def broadcast_to_discord(job_dict, job_response=None):
     job_link = job_dict['Job Link']
     proposal_response = job_dict['proposal response']
     with app.app_context():
+        total_jobs = Jobs.query.count()
+        print('total jobs', total_jobs)
+        if total_jobs == 100:
+            oldest_jobs = Jobs.query.all()
+            for job in oldest_jobs:
+                db.session.delete(job)
+            db.session.commit()
+
         new_job = Jobs(job_title=job_title, job_link=job_link, job_description=job_description)
+        print('new job', new_job)
         db.session.add(new_job)
         db.session.commit()
+        print('after committing job')
+
         new_proposal = Proposals(proposal=proposal_response, job_id=new_job.id)
         db.session.add(new_proposal)
         db.session.commit()
+        print('after committing proposal')
+
 
     formatted_dict = [f'**{k}**: {v}' for k, v in job_dict.items()]
 
@@ -446,6 +461,7 @@ def broadcast_to_discord(job_dict, job_response=None):
     message += '\n'.join(formatted_dict)
     message += '\n---------------------------------\n'
     discord.post(content=message)
+    print('after sending to discord')
 
 
 discord_token = 'MTEzNzQ3NDgzMzg2OTk3OTcyOQ.GBfeTV.JlkqAuuMmYY1YXKL7lUnlu8Y7_GMvnL-wx4Hjo'
@@ -467,10 +483,10 @@ async def on_message(message):
     # Perform any additional checks or actions based on the message content
     if message.content.lower() == '!start':
         flag = 'start'
-        await message.channel.send('server starting...!')
+        await message.channel.send('Bidding started')
     elif message.content.lower() == '!stop':
         flag = 'stop'
-        await message.channel.send("server stopped.")
+        await message.channel.send("Bidding stopped.")
 
 
 async def run_bot():
@@ -481,7 +497,7 @@ def main():
     global discord
     print('in job parser main thread')
     discord = Discord(url=webhook_url)
-    discord.post(content="Bidding Started")
+    # discord.post(content="Bidding Started")
 
     thread1 = Thread(target=fetch_jobs)
     thread2 = Thread(target=process_jobs)

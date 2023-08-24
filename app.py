@@ -2,10 +2,13 @@ from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from datetime import datetime
+from flask_cors import CORS
+import sqlalchemy as sa
 # from models import *
 
 
 app = Flask(__name__)
+cors = CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///upworkbot.db'
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
@@ -22,6 +25,20 @@ class Jobs(db.Model):
 
     def __repr__(self):
         return f"{self.job_title}"
+
+# def after_create(target, connection, **kw):
+#     connection.execute(sa.text("""\
+#         CREATE TRIGGER 'trigger_job_insert'
+#         BEFORE INSERT ON 'Jobs'
+#         WHEN ( SELECT count(*) FROM  'Jobs' ) > 3
+#         BEGIN
+#         DELETE FROM 'Jobs'
+#         END
+#         """
+#         ))
+#
+# # Listen on the underlying table object, not on the model class.
+# sa.event.listen('Jobs', "insert", after_create)
 
 
 class Proposals(db.Model):
@@ -55,13 +72,16 @@ def get_jobs():
 @app.route("/job/proposal/", methods=['GET'])
 def get_proposal():
     try:
-        id = request.args.get('id')
+        print('in get proposal api')
+        id = request.args.get('id', None)
+        print('in get proposal api', id)
         qs = Proposals.query.filter_by(job_id=id).first()
         if qs:
             job_dict = {
                 'job_id': qs.job_id,
                 'job_proposal': qs.proposal,
             }
+            print('qs', job_dict)
             return jsonify({'success': True, 'message': '', 'data': job_dict})
         return jsonify({'success': False, 'message': 'Not found', 'data': None})
     except Exception as e:

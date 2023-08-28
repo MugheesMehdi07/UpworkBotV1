@@ -16,7 +16,7 @@ import re
 import discord as ds
 from discord.ext import commands
 # from models import Jobs, Proposals, db
-from app import app, Jobs, Proposals, db
+from models import Jobs, db
 import time
 
 
@@ -81,20 +81,22 @@ def fetch_jobs():
 def process_jobs():
     global job_links
     global flag
-    print('Process Job')
+    # print('Process Job')
 
     while True:
         try:
-            print('flag', flag)
+            # print('in process job job link queue size', job_links.qsize())
             if flag == 'start':
+                print('job links', job_links.empty())
                 if not job_links.empty():
+                    print('in job link not empty')
                     job_dict = job_links.get()
                     print(f"""***********parsing following link : {job_dict['Job Link']}\n""")
                     write_response(job_dict)
                     time.sleep(10)
                     # parse_job(link)
                     # Existing job_info_scrape implementation goes here
-            print('in process job flag is empty')
+            # print('in process job flag is empty')
         except Exception as e:
             print(e)
 
@@ -107,6 +109,7 @@ def rss_parsing(rss, us_only=""):
         print("Parsing RSS for New Links------------ ")
 
         for entry in rss.entries:
+            print('entry', entry)
             title = entry.title
             link = entry.link
 
@@ -133,12 +136,28 @@ def rss_parsing(rss, us_only=""):
                 if link not in seen_links:
                     job_links.put(data)
                     seen_links.append(link)
-                    print('new job added')
+                    from app import app
+                    with app.app_context():
+                        total_jobs = Jobs.query.count()
+                        print('total jobs', total_jobs)
+                        if total_jobs == 100:
+                            oldest_jobs = Jobs.query.all()
+                            for job in oldest_jobs:
+                                db.session.delete(job)
+                            db.session.commit()
+                        print('before new job')
+                        new_job = Jobs(job_title=data['Job Title'], job_link=data['Job Link'], job_description=data['Job Description'])
+                        print('new job', new_job)
+                        db.session.add(new_job)
+                        db.session.commit()
+                        print('after committing job')
+
+                    # print('new job added', job_links.get())
 
             else:
                 print("Link contains excluded keywords")
 
-        print(job_links)
+        # print('job_links', job_links)
 
     except Exception as e:
         print(e)
@@ -146,7 +165,7 @@ def rss_parsing(rss, us_only=""):
 
 # Selenium
 def parse_job(link):
-    print("Parising Job through Selenium -------------- ")
+    print("Parsing Job through Selenium -------------- ")
 
     firefox_services = Service(executable_path='geckodriver', port=3000,
                                service_args=['--marionette-port', '2828', '--connect-existing'])
@@ -308,6 +327,7 @@ def parse_job(link):
 
 
 def shortlist_job(job_dict):
+    print('in shortlist job')
     print("Shortlisting Jobs-------------- ")
     features = {}
     try:
@@ -360,15 +380,18 @@ def shortlist_job(job_dict):
     if any(value is False for value in features.values()):
         print("Job not shortlisted")
         job_dict["Shortlisted"] = "Not Shortlisted : {}".format(str(features))
+        print('job dict in value', job_dict)
         broadcast_to_discord(job_dict)
     else:
         job_dict["Shortlisted"] = "Shortlisted : {}".format(str(features))
+        print('job dict in else', job_dict)
         write_response(job_dict)
 
 
 def write_response(job_dict):
-    # print('job_dict', job_dict)
+    print('in write response of job parser')
     print("Getting AI Proposal Now -------------- ")
+
     global key_index
     try:
         API_KEY = "ZQgDduUgpJyco4jvBvzKM11firS5fwjWsV54xQNyYbXlilIMFo15akOYnGryXwWRxnYbaA."
@@ -404,26 +427,28 @@ def write_response(job_dict):
         """
 
         bard_response = Bard().get_answer(input_text)['content']
-
-        if bard_response is not None:
-            bard_response = ''.join(bard_response)
-
+        print('bard response before checker', bard_response)
+        if bard_response is None:
+            print(' in bard response none checker')
+            return "Error with generate proposal:"
+        bard_response = ''.join(bard_response)
         special_characters = ['###', '\*', '\*\*', '**']
 
         for character in special_characters:
             bard_response = re.sub(re.escape(character), '', bard_response)
 
-        broadcast_to_discord(job_dict, bard_response)
-
+        # broadcast_to_discord(job_dict, bard_response)
+        return bard_response
     except Exception as e:
         print("Error with generate proposal:", str(e))
-        broadcast_to_discord(job_dict, 'Error with generating proposal : {}'.format(e))
+        # broadcast_to_discord(job_dict, 'Error with generating proposal : {}'.format(e))
 
 
 def broadcast_to_discord(job_dict, job_response=None):
     global discord
+    print('discord', discord)
     print("Sending to Discord-------------- ")
-    # print(job_dict)
+    print(job_dict)
     job_description = job_dict.pop('Job Description')
     print('job description', job_description)
     # create a list of formatted strings from the job_dict
@@ -433,25 +458,7 @@ def broadcast_to_discord(job_dict, job_response=None):
     job_title = job_dict['Job Title']
     job_link = job_dict['Job Link']
     proposal_response = job_dict['proposal response']
-    with app.app_context():
-        total_jobs = Jobs.query.count()
-        print('total jobs', total_jobs)
-        if total_jobs == 100:
-            oldest_jobs = Jobs.query.all()
-            for job in oldest_jobs:
-                db.session.delete(job)
-            db.session.commit()
 
-        new_job = Jobs(job_title=job_title, job_link=job_link, job_description=job_description)
-        print('new job', new_job)
-        db.session.add(new_job)
-        db.session.commit()
-        print('after committing job')
-
-        new_proposal = Proposals(proposal=proposal_response, job_id=new_job.id)
-        db.session.add(new_proposal)
-        db.session.commit()
-        print('after committing proposal')
 
 
     formatted_dict = [f'**{k}**: {v}' for k, v in job_dict.items()]
@@ -497,21 +504,26 @@ def main():
     global discord
     print('in job parser main thread')
     discord = Discord(url=webhook_url)
-    # discord.post(content="Bidding Started")
+    discord.post(content="Bidding Started")
+
 
     thread1 = Thread(target=fetch_jobs)
     thread2 = Thread(target=process_jobs)
 
     # Start threads
     thread1.start()
+    print('after starting thread1 ')
     thread2.start()
+    print('after starting thread2')
 
     # Start the bot asynchronously
     asyncio.run(run_bot())
 
     # Wait for both threads to finish
     thread1.join()
+    print('after thread1 join')
     thread2.join()
+    print('after thread2 join')
 
 
 if __name__ == "__main__":

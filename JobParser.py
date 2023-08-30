@@ -137,7 +137,6 @@ def rss_parsing(rss, us_only=""):
                     from app import app
                     with app.app_context():
                         total_jobs = Jobs.query.count()
-                        print('total jobs', total_jobs)
                         if total_jobs == 100:
                             oldest_jobs = Jobs.query.all()
                             for job in oldest_jobs:
@@ -166,14 +165,12 @@ def rss_parsing(rss, us_only=""):
                             }
                             if job_dict not in job_links.queue:
                                 job_links.put(job_dict)
-                        print('after committing job', job_links.qsize())
 
                     # print('new job added', job_links.get())
 
             else:
                 print("Link contains excluded keywords")
 
-        # print('job_links', job_links)
 
     except Exception as e:
         print(e)
@@ -197,7 +194,6 @@ def write_response(job_dict):
             "CjIBSAxbGfOLIQ6zZqhOAmiExXeeof1hqV3qVpEdO406f0hXHtZerKGtw8eV4qHDN43j0BAA.",
             "ZggDMrw-qa3ngHXElhXflwLjQlYYiCabg-1xl46x7MOAGjXmKOhbhnsOm1B0V163RlKh-Q."
         ]
-        print('bard api key', API_KEYS[key_index])
         os.environ['_BARD_API_KEY'] = API_KEYS[key_index]
 
         updated_index = (key_index + 1) % len(API_KEYS)
@@ -218,9 +214,7 @@ def write_response(job_dict):
         """
 
         bard_response = Bard().get_answer(input_text)['content']
-        print('bard response before checker', bard_response)
         if bard_response is None:
-            print(' in bard response none checker')
             return "Error with generate proposal:"
         bard_response = ''.join(bard_response)
         special_characters = ['###', '\*', '\*\*', '**']
@@ -240,13 +234,11 @@ def write_response(job_dict):
 def broadcast_to_discord(job_dict, job_response=None):
     global discord
     print("Sending to Discord-------------- ")
-    print('in discord job link', job_dict)
     job_id = job_dict['id']
     job_title = job_dict['job_title']
     job_link = job_dict['job_link']
 
     message = f'Job Title: {job_title}\nApp Link: {job_id}\nJob Main Link: {job_link}'
-    print('message', message)
     discord.post(content=message)
     print('after sending to discord')
 

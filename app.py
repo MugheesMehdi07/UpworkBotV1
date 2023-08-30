@@ -20,25 +20,25 @@ migrate = Migrate(app, db)
 
 @app.route("/", methods=['GET'])
 def get_jobs():
-    # try:
-    from models import Jobs
-    qs = Jobs.query.with_entities(Jobs.id, Jobs.job_title, Jobs.posted_on).order_by(Jobs.posted_on.desc()).limit(50).all()
-    jobs_list = []
-    PST = pytz.timezone('Asia/Karachi')
-    if qs:
-        for job in qs:
-            posted = job.posted_on.astimezone(PST).replace(tzinfo=None) + timedelta(hours=5)
-            job_dict = {
-                'id': job.id,
-                'job_title': job.job_title,
-                'posted_on': str(posted)
-            }
-            jobs_list.append(job_dict)
-        print('jobs list', jobs_list)
-        return jsonify({'success': True, 'message': '', 'data': jobs_list})
-    return jsonify({'success': False, 'message': 'Not found', 'data': jobs_list})
-    # except Exception as e:
-    #     return jsonify({'success': False, 'message': 'Something went wrong', 'data': None})
+    try:
+        from models import Jobs
+        qs = Jobs.query.with_entities(Jobs.id, Jobs.job_title, Jobs.posted_on).order_by(Jobs.posted_on.desc()).limit(50).all()
+        jobs_list = []
+        PST = pytz.timezone('Asia/Karachi')
+        if qs:
+            for job in qs:
+                posted = job.posted_on.astimezone(PST).replace(tzinfo=None) + timedelta(hours=5)
+                job_dict = {
+                    'id': job.id,
+                    'job_title': job.job_title,
+                    'posted_on': str(posted)
+                }
+                jobs_list.append(job_dict)
+            print('jobs list', jobs_list)
+            return jsonify({'success': True, 'message': '', 'data': jobs_list})
+        return jsonify({'success': False, 'message': 'Not found', 'data': jobs_list})
+    except Exception as e:
+        return jsonify({'success': False, 'message': 'Something went wrong', 'data': None})
 
 
 @app.route("/jobs/", methods=['GET'])

@@ -7,7 +7,7 @@ from discordwebhook import Discord
 from collections import deque
 from queue import Queue
 from threading import Thread
-import time
+from datetime import datetime, date
 import os
 import ssl
 from bs4 import BeautifulSoup
@@ -15,9 +15,9 @@ import feedparser
 import re
 import discord as ds
 from discord.ext import commands
-# from models import Jobs, Proposals, db
-from models import Jobs, db
+from models import Jobs, db, JobStatus
 import time
+from sqlalchemy import cast, Date
 
 
 if hasattr(ssl, '_create_unverified_context'):
@@ -38,15 +38,15 @@ exclude_keywords = ['shopify', 'wordpress', 'woocommerce', 'unreal', 'wix', 'web
 
 key_index = 0
 TEST = True
+job_links = Queue()
 
 if TEST:
     webhook_url = webhook_url_test
 
 discord = None
 
-job_links = Queue()
-seen_links = deque(maxlen=100)
 
+seen_links = deque(maxlen=100)
 
 # endregion
 
@@ -81,22 +81,18 @@ def fetch_jobs():
 def process_jobs():
     global job_links
     global flag
-    # print('Process Job')
-
+    print('Process Job')
     while True:
         try:
-            # print('in process job job link queue size', job_links.qsize())
             if flag == 'start':
-                print('job links', job_links.empty())
-                if not job_links.empty():
-                    print('in job link not empty')
+                while not job_links.empty():
                     job_dict = job_links.get()
-                    print(f"""***********parsing following link : {job_dict['Job Link']}\n""")
-                    write_response(job_dict)
-                    time.sleep(10)
+                    broadcast_to_discord(job_dict)
+                    print(f"""***********parsing following link : {job_dict}\n""")
+                    # write_response(job_dict)
+                    # time.sleep(10)
                     # parse_job(link)
                     # Existing job_info_scrape implementation goes here
-            # print('in process job flag is empty')
         except Exception as e:
             print(e)
 
@@ -104,15 +100,16 @@ def process_jobs():
 def rss_parsing(rss, us_only=""):
     global seen_links
     global job_links
+    base_url = 'http://localhost:3000/jobs/'
+
 
     try:
         print("Parsing RSS for New Links------------ ")
 
         for entry in rss.entries:
-            print('entry', entry)
             title = entry.title
             link = entry.link
-
+            posted_on = datetime.strptime(entry.published, '%a, %d %b %Y %H:%M:%S %z')
             soup = BeautifulSoup(entry.description, 'html.parser')
             description = soup.get_text(separator=' ')
 
@@ -126,15 +123,16 @@ def rss_parsing(rss, us_only=""):
                 "Job Link": link,
                 "Job Title": title,
                 "Job Description": description,
+                "Job Posted": posted_on
             }
-
+            print('data', data)
             if not any(
                     exclude_word.lower() in title.lower()
                     for exclude_word in exclude_keywords
             ):
 
                 if link not in seen_links:
-                    job_links.put(data)
+                    # job_links.put(data)
                     seen_links.append(link)
                     from app import app
                     with app.app_context():
@@ -145,9 +143,7 @@ def rss_parsing(rss, us_only=""):
                             for job in oldest_jobs:
                                 db.session.delete(job)
                             db.session.commit()
-                        print('before new job')
-                        new_job = Jobs(job_title=data['Job Title'], job_link=data['Job Link'], job_description=data['Job Description'])
-                        print('new job', new_job)
+                        new_job = Jobs(job_title=data['Job Title'], job_link=data['Job Link'], job_description=data['Job Description'], posted_on=data['Job Posted'])
                         db.session.add(new_job)
                         db.session.commit()
                         print('after committing job')
@@ -161,231 +157,6 @@ def rss_parsing(rss, us_only=""):
 
     except Exception as e:
         print(e)
-
-
-# Selenium
-def parse_job(link):
-    print("Parsing Job through Selenium -------------- ")
-
-    firefox_services = Service(executable_path='geckodriver', port=3000,
-                               service_args=['--marionette-port', '2828', '--connect-existing'])
-    driver = webdriver.Firefox(service=firefox_services)
-
-    credentials = {
-        'username': 'shakeelrootpointers@gmail.com',
-        'password': 'itu@123456',
-        'answer': 'lahore',
-    }
-
-    driver.get(link)
-    time.sleep(15)
-    soup = BeautifulSoup(driver.page_source, 'html.parser')
-
-    # login_needed = soup.find('a', href="/ab/account-security/login")
-    # Check if the login button exists
-    # if login_needed:
-    #     # Login
-    #     login(driver, credentials['username'], credentials['password'], credentials['answer'])
-
-    try:
-        try:
-            header_element = driver.find_element(By.CSS_SELECTOR, 'header.up-card-header.d-flex h1')
-            job_title = header_element.text
-        except Exception as e:
-            print(e)
-            job_title = ""
-
-        try:
-            job_description_element = driver.find_element(By.CSS_SELECTOR,
-                                                          'section.up-card-section div.job-description.break.mb-0')
-            job_description = job_description_element.text
-        except Exception as e:
-            print(e)
-            job_description = ""
-
-        li_elements = soup.find_all('li', class_='d-flex d-md-block justify-space-between')
-
-        try:
-            proposals_element = [element for element in li_elements if 'Proposals:' in element.text][0]
-            proposals_text = proposals_element.text.split(':')[1].strip()
-            # Use regular expressions to find all sequences of digits in the string
-            proposals_arr = re.findall(r'\d+', proposals_text)
-            # Convert the numbers to integers
-            proposals = list(map(int, proposals_arr))
-        except Exception as e:
-            print(f'An error occurred in proposals : {e}')
-            proposals = 0
-
-        try:
-            interviewing_element = [element for element in li_elements if 'Interviewing:' in element.text][0]
-            interviewing = int(interviewing_element.text.split(':')[1].strip())
-        except Exception as e:
-            print(f'An error occurred in interviewing : {e}')
-            interviewing = 0
-
-        try:
-            invites_element = [element for element in li_elements if 'Invites sent:' in element.text][0]
-            invites_sent = int(invites_element.text.split(':')[1].strip())
-        except Exception as e:
-            print(f'An error occurred in invites : {e}')
-            invites_sent = 0
-
-        try:
-            budget_element = driver.find_element(By.CSS_SELECTOR,
-                                                 'div.header.d-flex div[data-v-2bd71b67] div[data-v-913b0b82] p strong')
-            job_price = [float(budget_element.text.replace("$", "").replace(",", ""))]
-        except Exception as e:
-            print(f'An error occurred in job_price : {e}')
-            print('trying hourly rate job')
-            # If that fails, try the alternative code
-            try:
-                rate_elements = driver.find_elements(By.CSS_SELECTOR, 'div.header.d-flex div[data-v-913b0b82] p strong')
-                lower_rate = rate_elements[0].text.strip()
-                upper_rate = rate_elements[1].text.strip()
-                job_price = [float(lower_rate.replace("$", "").replace(",", "")),
-                             float(upper_rate.replace("$", "").replace(",", ""))]
-                print(job_price)
-            except Exception as e:
-                print(f'An error occurred in job_price : {e}')
-                job_price = []
-
-        try:
-            skills = soup.find_all('a', class_='up-n-link cfe-ui-job-skill up-skill-badge m-0-left m-0-top m-xs-bottom')
-            skills_text = [skill.get_text() for skill in skills]
-        except Exception as e:
-            print(f'An error occurred in skills : {e}')
-            skills_text = []
-
-        try:
-            location_element = driver.find_elements(By.CSS_SELECTOR, 'li[data-qa="client-location"]')[1]
-            country = location_element.find_element(By.CSS_SELECTOR, 'strong').text
-            city = location_element.find_element(By.CSS_SELECTOR, 'div.text-muted span.nowrap').text
-        except Exception as e:
-            print(f'An error occurred in location : {e}')
-            country = city = ""
-
-        try:
-            review_element = driver.find_elements(By.CSS_SELECTOR, 'div.text-muted.rating.mb-20 span.nowrap')[1]
-            avg_review = float(review_element.text.split(" ")[0])
-            number_of_reviews = int(review_element.text.split(" ")[2])
-        except Exception as e:
-            print(f'An error occurred in reviews : {e}')
-            avg_review = 0.0
-            number_of_reviews = 0
-
-        try:
-            job_posted_element = soup.find('li', attrs={'data-qa': 'client-job-posting-stats'})
-            jobs_posted = int(job_posted_element.text.strip().split()[0])
-        except Exception as e:
-            print(f'An error occurred in jobs posted : {e}')
-            jobs_posted = 0
-
-        try:
-            total_spent_element = soup.find('strong', attrs={'data-qa': 'client-spend'})
-            total_spent = float(total_spent_element.text.strip().split()[0].replace("$", "").replace(",", ""))
-        except Exception as e:
-            print(f'An error occurred in total spent : {e}')
-            total_spent = 0.0
-
-        try:
-            hires_element = soup.find('div', attrs={'data-qa': 'client-hires'})
-            num_hires = int(hires_element.text.strip().split()[0])
-        except Exception as e:
-            print(f'An error occurred in hires : {e}')
-            num_hires = 0
-
-        try:
-            location_restriction_element = soup.find('span', attrs={'class': 'vertical-align-middle'})
-            location_restriction = location_restriction_element.text.strip()
-        except Exception as e:
-            print(f'An error occurred in location restriction : {e}')
-            location_restriction = ""
-
-        data = {
-            "Job Link": link,
-            "Job Title": job_title,
-            "Job Description": job_description,
-            "Proposals": proposals,
-            "Interviewing": interviewing,
-            "Job Price": job_price,
-            "Skills": skills_text,
-            "Invites Sent": invites_sent,
-            "Country": country,
-            "City": city,
-            "Average Review": avg_review,
-            "Number of Reviews": number_of_reviews,
-            "Jobs Posted": jobs_posted,
-            "Total Spent": total_spent,
-            "Number of Hires": num_hires,
-            "Location Restriction": location_restriction,
-        }
-        # print(data)
-        shortlist_job(data)
-
-    except Exception as e:
-        print(e)
-
-
-def shortlist_job(job_dict):
-    print('in shortlist job')
-    print("Shortlisting Jobs-------------- ")
-    features = {}
-    try:
-        features['proposals'] = job_dict['Proposals'][0] < 10
-    except Exception as e:
-        print("Error with Proposals:", str(e))
-
-    try:
-        features['interviewing'] = job_dict['Interviewing'] < 3
-    except Exception as e:
-        print("Error with Interviewing:", str(e))
-
-    try:
-        features['invites'] = job_dict['Invites Sent'] < 10
-    except Exception as e:
-        print("Error with invites_sent:", str(e))
-
-    try:
-        features['country'] = job_dict['Country'] == '' or job_dict['Country'] in ['United States', 'United Kingdom',
-                                                                                   'Australia', 'Canada', 'Germany',
-                                                                                   'France', 'Netherlands', 'Spain',
-                                                                                   'Italy', 'Switzerland',
-                                                                                   'United Arab Emirates', 'Singapore',
-                                                                                   'Israel', 'Belgium', 'Sweden',
-                                                                                   'Ireland', 'Denmark', 'Austria',
-                                                                                   'Japan']
-    except Exception as e:
-        print("Error with country:", str(e))
-
-    try:
-        features['avg review'] = job_dict['Average Review'] > 4 or job_dict['Average Review'] == 0
-    except Exception as e:
-        print("Error with avg_review:", str(e))
-
-    try:
-        features['location'] = job_dict['Location Restriction'] in ['Worldwide']
-    except Exception as e:
-        print("Error with location_restriction:", str(e))
-
-    try:
-        if len(job_dict['Job Price']) == 1:
-            features['job_price'] = job_dict['Job Price'][0] >= 1000
-        else:
-            features['job_price'] = job_dict['Job Price'][1] > 20
-    except Exception as e:
-        print("Error with job_price:", str(e))
-
-    # features.append(job_dict['skills'] in [])
-
-    if any(value is False for value in features.values()):
-        print("Job not shortlisted")
-        job_dict["Shortlisted"] = "Not Shortlisted : {}".format(str(features))
-        print('job dict in value', job_dict)
-        broadcast_to_discord(job_dict)
-    else:
-        job_dict["Shortlisted"] = "Shortlisted : {}".format(str(features))
-        print('job dict in else', job_dict)
-        write_response(job_dict)
 
 
 def write_response(job_dict):
@@ -441,38 +212,27 @@ def write_response(job_dict):
         return bard_response
     except Exception as e:
         print("Error with generate proposal:", str(e))
+        return f'Error with generate proposal: {str(e)}'
+
         # broadcast_to_discord(job_dict, 'Error with generating proposal : {}'.format(e))
 
 
 def broadcast_to_discord(job_dict, job_response=None):
     global discord
-    print('discord', discord)
     print("Sending to Discord-------------- ")
-    print(job_dict)
-    job_description = job_dict.pop('Job Description')
-    print('job description', job_description)
-    # create a list of formatted strings from the job_dict
-    if job_response:
-        # join the list into a single string with line breaks
-        job_dict['proposal response'] = job_response
-    job_title = job_dict['Job Title']
-    job_link = job_dict['Job Link']
-    proposal_response = job_dict['proposal response']
+    print('in discord job link', job_dict)
+    job_id = job_dict['id']
+    job_title = job_dict['job_title']
+    job_link = job_dict['job_link']
 
-
-
-    formatted_dict = [f'**{k}**: {v}' for k, v in job_dict.items()]
-
-    # Add line on end
-    message = '\n---------------------------------\n'
-    message += '\n'.join(formatted_dict)
-    message += '\n---------------------------------\n'
-    discord.post(content=message)
+    message = f'Job Title: {job_title} /n Job Link: {job_id} /n Job Main Link: {job_link}'
+    print('message', message)
+    # discord.post(content=message)
     print('after sending to discord')
 
 
 discord_token = 'MTEzNzQ3NDgzMzg2OTk3OTcyOQ.GBfeTV.JlkqAuuMmYY1YXKL7lUnlu8Y7_GMvnL-wx4Hjo'
-flag = ''
+flag = 'start'
 intents = ds.Intents.all()
 bot = commands.Bot(command_prefix='!', intents=intents)
 
@@ -490,10 +250,10 @@ async def on_message(message):
     # Perform any additional checks or actions based on the message content
     if message.content.lower() == '!start':
         flag = 'start'
-        await message.channel.send('Bidding started')
+        # await message.channel.send('Bidding started')
     elif message.content.lower() == '!stop':
         flag = 'stop'
-        await message.channel.send("Bidding stopped.")
+        # await message.channel.send("Bidding stopped.")
 
 
 async def run_bot():
@@ -503,27 +263,22 @@ async def run_bot():
 def main():
     global discord
     print('in job parser main thread')
-    discord = Discord(url=webhook_url)
-    discord.post(content="Bidding Started")
-
+    # discord = Discord(url=webhook_url)
+    # discord.post(content="Bidding Started")
 
     thread1 = Thread(target=fetch_jobs)
     thread2 = Thread(target=process_jobs)
 
     # Start threads
     thread1.start()
-    print('after starting thread1 ')
     thread2.start()
-    print('after starting thread2')
 
     # Start the bot asynchronously
     asyncio.run(run_bot())
 
     # Wait for both threads to finish
     thread1.join()
-    print('after thread1 join')
     thread2.join()
-    print('after thread2 join')
 
 
 if __name__ == "__main__":

@@ -11,9 +11,9 @@ import pytz
 app = Flask(__name__)
 cors = CORS(app)
 # for dev
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///upworkbot.db'
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///upworkbot.db'
 # for prod
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:123456@localhost:5432/upworkbot'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:123456@localhost:5432/upworkbot'
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
@@ -27,7 +27,7 @@ def get_jobs():
         PST = pytz.timezone('Asia/Karachi')
         if qs:
             for job in qs:
-                posted = job.posted_on.astimezone(PST).replace(tzinfo=None) + timedelta(hours=5)
+                posted = job.posted_on.astimezone(PST).replace(tzinfo=None) 
                 job_dict = {
                     'id': job.id,
                     'job_title': job.job_title,

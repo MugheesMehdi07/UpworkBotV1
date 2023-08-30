@@ -37,7 +37,7 @@ exclude_keywords = ['shopify', 'wordpress', 'woocommerce', 'unreal', 'wix', 'web
                     'Word press', 'Php', 'Vba', 'Airtable']
 
 key_index = 0
-TEST = True
+TEST = False
 job_links = Queue()
 
 if TEST:
@@ -125,7 +125,7 @@ def rss_parsing(rss, us_only=""):
                 "Job Description": description,
                 "Job Posted": posted_on
             }
-            print('data', data)
+            # print('data', data)
             if not any(
                     exclude_word.lower() in title.lower()
                     for exclude_word in exclude_keywords
@@ -147,12 +147,14 @@ def rss_parsing(rss, us_only=""):
                         db.session.add(new_job)
                         db.session.commit()
                         today = datetime.now()
-                        job_status_obj = JobStatus.query.filter_by(JobStatus.added_on.date() == today.date()).first()
+                        from datetime import date
+                        date_now =date.today()
+                        job_status_obj = JobStatus.query.filter(JobStatus.added_on.cast(db.Date) == date_now).first()
                         if job_status_obj:
                             job_status_obj.total_jobs = job_status_obj.total_jobs + 1
                             db.session.commit()
                         else:
-                            job_status_obj = JobStatus(total_jobs=1, posted_on=today)
+                            job_status_obj = JobStatus(total_jobs=1, added_on=today)
                             db.session.add(job_status_obj)
                             db.session.commit()
                         qs = Jobs.query.with_entities(Jobs.id, Jobs.job_title, Jobs.job_link).order_by(Jobs.created_at.desc()).first()
@@ -243,9 +245,9 @@ def broadcast_to_discord(job_dict, job_response=None):
     job_title = job_dict['job_title']
     job_link = job_dict['job_link']
 
-    message = f'Job Title: {job_title} /n Job Link: {job_id} /n Job Main Link: {job_link}'
+    message = f'Job Title: {job_title}\nApp Link: {job_id}\nJob Main Link: {job_link}'
     print('message', message)
-    # discord.post(content=message)
+    discord.post(content=message)
     print('after sending to discord')
 
 

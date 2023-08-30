@@ -10,7 +10,10 @@ from queue import Queue
 
 app = Flask(__name__)
 cors = CORS(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///upworkbot.db'
+# for dev
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///upworkbot.db'
+# for prod
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:123456@localhost:5432/upworkbot'
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 

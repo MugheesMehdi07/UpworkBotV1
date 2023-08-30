@@ -1,43 +1,44 @@
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask_cors import CORS
 import sqlalchemy as sa
-from queue import Queue
+import pytz
 
 
 
 app = Flask(__name__)
 cors = CORS(app)
 # for dev
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///upworkbot.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///upworkbot.db'
 # for prod
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:123456@localhost:5432/upworkbot'
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:123456@localhost:5432/upworkbot'
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 
-
 @app.route("/", methods=['GET'])
 def get_jobs():
-    try:
-        from models import Jobs
-        qs = Jobs.query.with_entities(Jobs.id, Jobs.job_title, Jobs.posted_on).order_by(Jobs.posted_on.desc()).limit(50).all()
-        print('qs', qs)
-        jobs_list = []
-        if qs:
-            for job in qs:
-                job_dict = {
-                    'id': job.id,
-                    'job_title': job.job_title,
-                    'posted_on': job.posted_on.strftime('%d-%B-%Y')
-                }
-                jobs_list.append(job_dict)
-            return jsonify({'success': True, 'message': '', 'data': jobs_list})
-        return jsonify({'success': False, 'message': 'Not found', 'data': jobs_list})
-    except Exception as e:
-        return jsonify({'success': False, 'message': 'Something went wrong', 'data': None})
+    # try:
+    from models import Jobs
+    qs = Jobs.query.with_entities(Jobs.id, Jobs.job_title, Jobs.posted_on).order_by(Jobs.posted_on.desc()).limit(50).all()
+    jobs_list = []
+    PST = pytz.timezone('Asia/Karachi')
+    if qs:
+        for job in qs:
+            posted = job.posted_on.astimezone(PST).replace(tzinfo=None) + timedelta(hours=5)
+            job_dict = {
+                'id': job.id,
+                'job_title': job.job_title,
+                'posted_on': str(posted)
+            }
+            jobs_list.append(job_dict)
+        print('jobs list', jobs_list)
+        return jsonify({'success': True, 'message': '', 'data': jobs_list})
+    return jsonify({'success': False, 'message': 'Not found', 'data': jobs_list})
+    # except Exception as e:
+    #     return jsonify({'success': False, 'message': 'Something went wrong', 'data': None})
 
 
 @app.route("/jobs/", methods=['GET'])

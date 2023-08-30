@@ -100,7 +100,7 @@ def process_jobs():
 def rss_parsing(rss, us_only=""):
     global seen_links
     global job_links
-    base_url = 'http://localhost:3000/jobs/'
+    base_url = 'http://upworkbot.rootpointers.net/jobs/'
 
 
     try:
@@ -146,7 +146,25 @@ def rss_parsing(rss, us_only=""):
                         new_job = Jobs(job_title=data['Job Title'], job_link=data['Job Link'], job_description=data['Job Description'], posted_on=data['Job Posted'])
                         db.session.add(new_job)
                         db.session.commit()
-                        print('after committing job')
+                        today = datetime.now()
+                        job_status_obj = JobStatus.query.filter_by(JobStatus.added_on.date() == today.date()).first()
+                        if job_status_obj:
+                            job_status_obj.total_jobs = job_status_obj.total_jobs + 1
+                            db.session.commit()
+                        else:
+                            job_status_obj = JobStatus(total_jobs=1, posted_on=today)
+                            db.session.add(job_status_obj)
+                            db.session.commit()
+                        qs = Jobs.query.with_entities(Jobs.id, Jobs.job_title, Jobs.job_link).order_by(Jobs.created_at.desc()).first()
+                        if qs:
+                            job_dict = {
+                            'id' : base_url + str(qs[0]),
+                            'job_title' : qs[1],
+                            'job_link' : qs[2]
+                            }
+                            if job_dict not in job_links.queue:
+                                job_links.put(job_dict)
+                        print('after committing job', job_links.qsize())
 
                     # print('new job added', job_links.get())
 
@@ -232,7 +250,7 @@ def broadcast_to_discord(job_dict, job_response=None):
 
 
 discord_token = 'MTEzNzQ3NDgzMzg2OTk3OTcyOQ.GBfeTV.JlkqAuuMmYY1YXKL7lUnlu8Y7_GMvnL-wx4Hjo'
-flag = 'start'
+flag = ''
 intents = ds.Intents.all()
 bot = commands.Bot(command_prefix='!', intents=intents)
 
@@ -250,10 +268,10 @@ async def on_message(message):
     # Perform any additional checks or actions based on the message content
     if message.content.lower() == '!start':
         flag = 'start'
-        # await message.channel.send('Bidding started')
+        await message.channel.send('Bidding started')
     elif message.content.lower() == '!stop':
         flag = 'stop'
-        # await message.channel.send("Bidding stopped.")
+        await message.channel.send("Bidding stopped.")
 
 
 async def run_bot():
@@ -263,8 +281,8 @@ async def run_bot():
 def main():
     global discord
     print('in job parser main thread')
-    # discord = Discord(url=webhook_url)
-    # discord.post(content="Bidding Started")
+    discord = Discord(url=webhook_url)
+    discord.post(content="Bidding Started")
 
     thread1 = Thread(target=fetch_jobs)
     thread2 = Thread(target=process_jobs)

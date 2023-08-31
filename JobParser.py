@@ -19,7 +19,6 @@ from models import Jobs, db, JobStatus
 import time
 from sqlalchemy import cast, Date
 
-
 if hasattr(ssl, '_create_unverified_context'):
     ssl._create_default_https_context = ssl._create_unverified_context
 
@@ -45,8 +44,8 @@ if TEST:
 
 discord = None
 
-
 seen_links = deque(maxlen=100)
+
 
 # endregion
 
@@ -75,7 +74,7 @@ def fetch_jobs():
         except Exception as e:
             print(e)
 
-        time.sleep(10)  # Or however often you want to fetch jobs
+        time.sleep(10)
 
 
 def process_jobs():
@@ -87,12 +86,9 @@ def process_jobs():
             if flag == 'start':
                 while not job_links.empty():
                     job_dict = job_links.get()
+                    time.sleep(10)
                     broadcast_to_discord(job_dict)
                     print(f"""***********parsing following link : {job_dict}\n""")
-                    # write_response(job_dict)
-                    # time.sleep(10)
-                    # parse_job(link)
-                    # Existing job_info_scrape implementation goes here
         except Exception as e:
             print(e)
 
@@ -101,7 +97,6 @@ def rss_parsing(rss, us_only=""):
     global seen_links
     global job_links
     base_url = 'http://upworkbot.rootpointers.net/jobs/'
-
 
     try:
         print("Parsing RSS for New Links------------ ")
@@ -112,90 +107,87 @@ def rss_parsing(rss, us_only=""):
             posted_on = datetime.strptime(entry.published, '%a, %d %b %Y %H:%M:%S %z')
             soup = BeautifulSoup(entry.description, 'html.parser')
             description = soup.get_text(separator=' ')
-
-            # print("Job Title:", title)
-            #
-            # print("Job Link:", link)
-            #
-            # print("Job Description:", description)
-
             data = {
                 "Job Link": link,
                 "Job Title": title,
                 "Job Description": description,
                 "Job Posted": posted_on
             }
-            # print('data', data)
             if not any(
                     exclude_word.lower() in title.lower()
                     for exclude_word in exclude_keywords
             ):
 
                 if link not in seen_links:
-                    # job_links.put(data)
                     seen_links.append(link)
                     from app import app
                     with app.app_context():
                         total_jobs = Jobs.query.count()
-                        if total_jobs == 100:
+                        if total_jobs == 5000:
                             oldest_jobs = Jobs.query.all()
                             for job in oldest_jobs:
                                 db.session.delete(job)
                             db.session.commit()
-                        new_job = Jobs(job_title=data['Job Title'], job_link=data['Job Link'], job_description=data['Job Description'], posted_on=data['Job Posted'])
-                        db.session.add(new_job)
-                        db.session.commit()
-                        today = datetime.now()
-                        from datetime import date
-                        date_now =date.today()
-                        job_status_obj = JobStatus.query.filter(JobStatus.added_on.cast(db.Date) == date_now).first()
-                        if job_status_obj:
-                            job_status_obj.total_jobs = job_status_obj.total_jobs + 1
+                        try:
+                            new_job = Jobs(job_title=data['Job Title'], job_link=data['Job Link'],
+                                           job_description=data['Job Description'], posted_on=data['Job Posted'])
+                            db.session.add(new_job)
                             db.session.commit()
-                        else:
-                            job_status_obj = JobStatus(total_jobs=1, added_on=today)
-                            db.session.add(job_status_obj)
-                            db.session.commit()
-                        qs = Jobs.query.with_entities(Jobs.id, Jobs.job_title, Jobs.job_link).order_by(Jobs.created_at.desc()).first()
+                            today = datetime.now()
+                            date_now = date.today()
+                            job_status_obj = JobStatus.query.filter(
+                                JobStatus.added_on.cast(db.Date) == date_now).first()
+                            if job_status_obj:
+                                job_status_obj.total_jobs = job_status_obj.total_jobs + 1
+                                db.session.commit()
+                            else:
+                                job_status_obj = JobStatus(total_jobs=1, added_on=today)
+                                db.session.add(job_status_obj)
+                                db.session.commit()
+                            qs = Jobs.query.with_entities(Jobs.id, Jobs.job_title, Jobs.job_link).order_by(
+                                Jobs.created_at.desc()).first()
+                        except Exception as e:
+                            print('An error occurred in creating job object', str(e))
+
                         if qs:
                             job_dict = {
-                            'id' : base_url + str(qs[0]),
-                            'job_title' : qs[1],
-                            'job_link' : qs[2]
+                                'id': base_url + str(qs[0]),
+                                'job_title': qs[1],
+                                'job_link': qs[2]
                             }
                             if job_dict not in job_links.queue:
                                 job_links.put(job_dict)
-
-                    # print('new job added', job_links.get())
-
             else:
                 print("Link contains excluded keywords")
-
-
     except Exception as e:
         print(e)
 
 
 def write_response(job_dict):
-    print('in write response of job parser')
     print("Getting AI Proposal Now -------------- ")
 
     global key_index
     try:
-        API_KEY = "ZQgDduUgpJyco4jvBvzKM11firS5fwjWsV54xQNyYbXlilIMFo15akOYnGryXwWRxnYbaA."
         API_KEYS = [
             "ZQgDduUgpJyco4jvBvzKM11firS5fwjWsV54xQNyYbXlilIMFo15akOYnGryXwWRxnYbaA.",
-            "ZwgGcyldhHBJf6GHh6GOc2ob_2vipNxaxf70l3YjDP-eOxfYO_F7hwfcw5XBni_qRKFGYA.",
-            "ZgiPGLZC2OHOGd-ehwwDeRkkwvlt17FkpuYn0WluAF3Qu1EpFhatAfAcBUulcVnvEsjz8Q.",
-            "YwjU50L0GNkYG5ylXwWeKIIGXvLrfuK6Wk4ewiZU8-aoSW8u3poWgKmBMHCrvy5Ab_kA8g.",
+            # "ZwgGcyldhHBJf6GHh6GOc2ob_2vipNxaxf70l3YjDP-eOxfYO_F7hwfcw5XBni_qRKFGYA.",    # error
+            # "ZgiPGLZC2OHOGd-ehwwDeRkkwvlt17FkpuYn0WluAF3Qu1EpFhatAfAcBUulcVnvEsjz8Q.",  # error
+            # "YwjU50L0GNkYG5ylXwWeKIIGXvLrfuK6Wk4ewiZU8-aoSW8u3poWgKmBMHCrvy5Ab_kA8g.",  # error
             "ZgjnhpFJL0_mlhMTlQ5yl4KUje3WJLsMNT9hDhcahC27-RmPvU5jmcOxakx-yFHkfLCWdw.",
-            "ZQgCIRSLQ5RLe4r257amvGTgilDi47VK6s3VytwCdhRRZdaKYO-kU7fYZd8tfaNedl-h3w.",
-            "YwiGFUYqFLhmxJMMeAaGLKlz2TzqBWHgCbSqx1-yXDWP6m-cI6w85MCC2KDTf3dMvkS9RQ.",
-            "CjIBSAxbGfOLIQ6zZqhOAmiExXeeof1hqV3qVpEdO406f0hXHtZerKGtw8eV4qHDN43j0BAA.",
-            "ZggDMrw-qa3ngHXElhXflwLjQlYYiCabg-1xl46x7MOAGjXmKOhbhnsOm1B0V163RlKh-Q."
+            # "ZQgCIRSLQ5RLe4r257amvGTgilDi47VK6s3VytwCdhRRZdaKYO-kU7fYZd8tfaNedl-h3w.",  # error
+            # "YwiGFUYqFLhmxJMMeAaGLKlz2TzqBWHgCbSqx1-yXDWP6m-cI6w85MCC2KDTf3dMvkS9RQ.",  # error
+            # "CjIBSAxbGfOLIQ6zZqhOAmiExXeeof1hqV3qVpEdO406f0hXHtZerKGtw8eV4qHDN43j0BAA.",    # error
+            # "ZggDMrw-qa3ngHXElhXflwLjQlYYiCabg-1xl46x7MOAGjXmKOhbhnsOm1B0V163RlKh-Q."   #error
+        ]
+        rejection_list = [
+            "not programmed",
+            "I'm unable to",
+            "text-based AI",
+            "language modelAI",
+            "can't assist"
         ]
         os.environ['_BARD_API_KEY'] = API_KEYS[key_index]
-
+        print('bard key', API_KEYS[key_index])
         updated_index = (key_index + 1) % len(API_KEYS)
         key_index = updated_index
         game_portfolio = "https://play.google.com/store/apps/developer?id=Tap2Play,+LLC"
@@ -214,21 +206,35 @@ def write_response(job_dict):
         """
 
         bard_response = Bard().get_answer(input_text)['content']
+        print('bard response', bard_response)
+
+        # if "can't assist" in str(bard_response).lower() or "language modelAI" in str(
+        #         bard_response).lower() or "text-based AI" in str(bard_response).lower() or "I'm unable to" in str(
+        #         bard_response).lower() or "not programmed" in str(bard_response).lower():
+        #     write_response(job_dict)
+        for a in rejection_list:
+            if a in str(bard_response.lower()):
+                write_response(job_dict)
         if bard_response is None:
             return "Error with generate proposal:"
         bard_response = ''.join(bard_response)
-        special_characters = ['###', '\*', '\*\*', '**']
+        special_characters = ['###', '***', '**', '*', '\*\*\*', '\*\*', '\*',  '>>', '>']
 
         for character in special_characters:
             bard_response = re.sub(re.escape(character), '', bard_response)
-
-        # broadcast_to_discord(job_dict, bard_response)
+        if 'thanks' in bard_response.lower():
+            index = bard_response.lower().index('thanks')
+        elif 'sincerely' in bard_response.lower():
+            index = bard_response.lower().index('sincerely')
+        elif 'regards' in bard_response.lower():
+            index = bard_response.lower().index('regards')
+        bard_response = bard_response[:index]
+        response = bard_response.split(':')
+        bard_response = ''.join(response[1:])
         return bard_response
     except Exception as e:
         print("Error with generate proposal:", str(e))
         return f'Error with generate proposal: {str(e)}'
-
-        # broadcast_to_discord(job_dict, 'Error with generating proposal : {}'.format(e))
 
 
 def broadcast_to_discord(job_dict, job_response=None):

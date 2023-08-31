@@ -38,6 +38,7 @@ exclude_keywords = ['shopify', 'wordpress', 'woocommerce', 'unreal', 'wix', 'web
 key_index = 0
 TEST = False
 job_links = Queue()
+discord_jobs = Queue()
 
 if TEST:
     webhook_url = webhook_url_test
@@ -78,14 +79,15 @@ def fetch_jobs():
 
 
 def process_jobs():
+    global discord_jobs
     global job_links
     global flag
     print('Process Job')
     while True:
         try:
             if flag == 'start':
-                while not job_links.empty():
-                    job_dict = job_links.get()
+                while not discord_jobs.empty():
+                    job_dict = discord_jobs.get()
                     time.sleep(10)
                     broadcast_to_discord(job_dict)
                     print(f"""***********parsing following link : {job_dict}\n""")
@@ -96,6 +98,8 @@ def process_jobs():
 def rss_parsing(rss, us_only=""):
     global seen_links
     global job_links
+    global discord_jobs
+    global flag
     base_url = 'http://upworkbot.rootpointers.net/jobs/'
 
     try:
@@ -155,6 +159,9 @@ def rss_parsing(rss, us_only=""):
                                 'job_title': qs[1],
                                 'job_link': qs[2]
                             }
+                            if flag == 'start':
+                                if job_dict not in discord_jobs.queue:
+                                    discord_jobs.put(job_dict)
                             if job_dict not in job_links.queue:
                                 job_links.put(job_dict)
             else:
@@ -167,6 +174,7 @@ def write_response(job_dict):
     print("Getting AI Proposal Now -------------- ")
 
     global key_index
+    index = 0
     try:
         API_KEYS = [
             "ZQgDduUgpJyco4jvBvzKM11firS5fwjWsV54xQNyYbXlilIMFo15akOYnGryXwWRxnYbaA.",
@@ -228,7 +236,8 @@ def write_response(job_dict):
             index = bard_response.lower().index('sincerely')
         elif 'regards' in bard_response.lower():
             index = bard_response.lower().index('regards')
-        bard_response = bard_response[:index]
+        if index > 0:
+            bard_response = bard_response[:index]
         response = bard_response.split(':')
         bard_response = ''.join(response[1:])
         return bard_response

@@ -174,7 +174,6 @@ def write_response(job_dict):
     print("Getting AI Proposal Now -------------- ")
 
     global key_index
-    index = 0
     try:
         API_KEYS = [
             "ZQgDduUgpJyco4jvBvzKM11firS5fwjWsV54xQNyYbXlilIMFo15akOYnGryXwWRxnYbaA.",
@@ -189,10 +188,12 @@ def write_response(job_dict):
         ]
         rejection_list = [
             "not programmed",
-            "I'm unable to",
-            "text-based AI",
-            "language modelAI",
-            "can't assist"
+            "i'm unable to",
+            "text-based ai",
+            "language model ai",
+            "can't assist",
+            "language model",
+            'unable'
         ]
         os.environ['_BARD_API_KEY'] = API_KEYS[key_index]
         print('bard key', API_KEYS[key_index])
@@ -226,20 +227,23 @@ def write_response(job_dict):
         if bard_response is None:
             return "Error with generate proposal:"
         bard_response = ''.join(bard_response)
-        special_characters = ['###', '***', '**', '*', '\*\*\*', '\*\*', '\*',  '>>', '>']
-
+        special_characters = ['###', '***', '**', '*', '\*\*\*', '\*\*', '\*',  '>>', '>', '\n\n', '\n\n\n']
+        str_index = 0
         for character in special_characters:
             bard_response = re.sub(re.escape(character), '', bard_response)
         if 'thanks' in bard_response.lower():
-            index = bard_response.lower().index('thanks')
+            str_index = bard_response.lower().index('thanks')
         elif 'sincerely' in bard_response.lower():
-            index = bard_response.lower().index('sincerely')
+            str_index = bard_response.lower().index('sincerely')
         elif 'regards' in bard_response.lower():
-            index = bard_response.lower().index('regards')
-        if index > 0:
-            bard_response = bard_response[:index]
+            str_index = bard_response.lower().index('regards')
+        if str_index > 0:
+            bard_response = bard_response[:str_index]
         response = bard_response.split(':')
-        bard_response = ''.join(response[1:])
+        if 'Sure,' in bard_response:
+            response = bard_response.split(':')
+            bard_response = ''.join(response[1:])
+        bard_response = ''.join(bard_response.split('\n'))
         return bard_response
     except Exception as e:
         print("Error with generate proposal:", str(e))

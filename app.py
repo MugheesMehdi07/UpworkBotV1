@@ -27,7 +27,7 @@ def get_jobs():
         PST = pytz.timezone('Asia/Karachi')
         if qs:
             for job in qs:
-                posted = job.posted_on.astimezone(PST).replace(tzinfo=None) + timedelta(hours=5)
+                posted = job.posted_on.astimezone(PST).replace(tzinfo=None) 
                 job_dict = {
                     'id': job.id,
                     'job_title': job.job_title,

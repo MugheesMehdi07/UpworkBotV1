@@ -7,7 +7,6 @@ import sqlalchemy as sa
 import pytz
 
 
-
 app = Flask(__name__)
 cors = CORS(app)
 # for dev
@@ -27,7 +26,7 @@ def get_jobs():
         PST = pytz.timezone('Asia/Karachi')
         if qs:
             for job in qs:
-                posted = job.posted_on.astimezone(PST).replace(tzinfo=None) 
+                posted = job.posted_on.astimezone(PST).replace(tzinfo=None)
                 job_dict = {
                     'id': job.id,
                     'job_title': job.job_title,
@@ -35,56 +34,87 @@ def get_jobs():
                 }
                 jobs_list.append(job_dict)
             print('jobs list', jobs_list)
-            return jsonify({'success': True, 'message': '', 'data': jobs_list})
-        return jsonify({'success': False, 'message': 'Not found', 'data': jobs_list})
+            response = jsonify({'success': True, 'message': '', 'data': jobs_list})
+            response.status_code = 200
+            return response
+        response = jsonify({'success': False, 'message': 'Not found', 'data': None})
+        response.status_code = 400
+        return response
     except Exception as e:
-        return jsonify({'success': False, 'message': 'Something went wrong', 'data': None})
+        response = jsonify({'success': False, 'message': 'Something went wrong', 'data': None})
+        response.status_code = 400
+        return response
 
 
 @app.route("/jobs/", methods=['GET'])
 def get_job():
-    # try:
-    from models import Jobs
-    id = request.args.get('id', None)
-    qs = Jobs.query.filter_by(id=id).first()
-    if qs:
-        description = qs.job_description
-        if 'hourly range' in description.lower():
-            index = description.lower().index('hourly')
-            description = description[:index]
-        if 'budget' in description.lower():
-            index = description.lower().index('budget')
-            description = description[:index]
-        if 'category' in description.lower():
-            index = description.lower().index('category')
-        last_word = description.split()[-1]
-        if '.' not in last_word and '!' not in last_word:
-            description = description + '.'
-        job_dict = {
-            'job_title': qs.job_title,
-            'job_link': qs.job_link,
-            'job_description': description,
-        }
-        # print('qs', job_dict)
-        return jsonify({'success': True, 'message': '', 'data': job_dict})
-    return jsonify({'success': False, 'message': 'Not found', 'data': None})
-    # except Exception as e:
-    #     return jsonify({'success': False, 'message': 'Something went wrong', 'data': None})
+    try:
+        from models import Jobs
+        id = request.args.get('id', None)
+        qs = Jobs.query.filter_by(id=int(id)).first()
+        if qs:
+            description = description_format(qs.job_description)
+            job_dict = {
+                'job_id': qs.id,
+                'job_title': qs.job_title,
+                'job_link': qs.job_link,
+                'job_description': description,
+            }
+            response = jsonify({'success': True, 'message': '', 'data': job_dict})
+            response.status_code = 200
+            return response
+        response = jsonify({'success': False, 'message': 'Not found', 'data': None})
+        response.status_code = 400
+        return response
+    except Exception as e:
+        response = jsonify({'success': False, 'message': 'Something went wrong', 'data': None})
+        response.status_code = 400
+        return response
 
 
 @app.route("/jobs/proposal", methods=['POST'])
 def get_proposal():
     try:
-        print('in proposal api')
         job_dict = request.json
-        print('job_dict', job_dict)
-        if job_dict:
+        from models import Jobs
+        qs = Jobs.query.filter_by(id=int(job_dict['job_id'])).first()
+        if qs:
+            description = description_format(qs.job_description)
+            job_dict = {
+                'Job Title': qs.job_title,
+                'Job Link': qs.job_link,
+                'Job Description': description,
+            }
             from JobParser import write_response
             bard_response = write_response(job_dict)
-
-            return jsonify({'success': True, 'message': '', 'data': bard_response})
+            print('bard', bard_response)
+            response = jsonify({'success': True, 'message': '', 'data': bard_response})
+            response.status_code = 200
+            return response
+        response = jsonify({'success': False, 'message': 'Not found', 'data': None})
+        response.status_code = 400
+        return response
     except Exception as e:
-        return jsonify({'success': False, 'message': 'Something went wrong', 'data': None})
+        response = jsonify({'success': False, 'message': 'Something went wrong', 'data': None})
+        response.status_code = 400
+        return response
+
+
+def description_format(description):
+    if description:
+        if 'hourly range' in description.lower():
+            str_index = description.lower().index('hourly')
+            description = description[:str_index]
+        if 'budget' in description.lower():
+            str_index = description.lower().index('budget')
+            description = description[:str_index]
+        if 'category' in description.lower():
+            str_index = description.lower().index('category')
+            description = description[:str_index]
+        last_word = description.split()[-1]
+        if '.' not in last_word and '!' not in last_word:
+            description = description + '.'
+        return description
 
 
 if __name__ == "__main__":

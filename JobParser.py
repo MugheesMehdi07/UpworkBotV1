@@ -172,7 +172,11 @@ def rss_parsing(rss, us_only=""):
 
 def write_response(job_dict):
     print("Getting AI Proposal Now -------------- ")
-
+    bard_response = ''
+    subject_line = ''
+    closing_word = ''
+    closing_words = ["thanks,", "sincerely,", "best regards,"]
+    response_lines = []
     global key_index
     try:
         API_KEYS = [
@@ -196,7 +200,6 @@ def write_response(job_dict):
             'unable'
         ]
         os.environ['_BARD_API_KEY'] = API_KEYS[key_index]
-        print('bard key', API_KEYS[key_index])
         updated_index = (key_index + 1) % len(API_KEYS)
         key_index = updated_index
         game_portfolio = "https://play.google.com/store/apps/developer?id=Tap2Play,+LLC"
@@ -215,36 +218,55 @@ def write_response(job_dict):
         """
 
         bard_response = Bard().get_answer(input_text)['content']
-        print('bard response', bard_response)
 
-        # if "can't assist" in str(bard_response).lower() or "language modelAI" in str(
-        #         bard_response).lower() or "text-based AI" in str(bard_response).lower() or "I'm unable to" in str(
-        #         bard_response).lower() or "not programmed" in str(bard_response).lower():
-        #     write_response(job_dict)
         for a in rejection_list:
             if a in str(bard_response.lower()):
-                write_response(job_dict)
+                bard_response = write_response(job_dict)
+                break
         if bard_response is None:
             return "Error with generate proposal:"
-        bard_response = ''.join(bard_response)
-        special_characters = ['###', '***', '**', '*', '\*\*\*', '\*\*', '\*',  '>>', '>', '\n\n', '\n\n\n']
+        if bard_response:
+            lines = bard_response.split('\n')
+
+            for line in range(len(lines) - 1, -1, -1):
+                if "subject" in lines[line].lower():
+                    subject_line = '{0} \n'.format(line)
+                    del lines[line]
+                if any(word in lines[line].lower() for word in closing_words):
+                    closing_word = '\n {0}'.format(line)
+                    del lines[line]
+                if "i hope this proposal is concise" in lines[line].lower():
+                    del lines[line]
+            bard_response = ''.join(lines)
+        special_characters = ['###', '***', '**', '*', '\*\*\*', '\*\*', '\*',  '>>', '>', '\n\n\n']
         str_index = 0
         for character in special_characters:
             bard_response = re.sub(re.escape(character), '', bard_response)
+
         if 'thanks' in bard_response.lower():
             str_index = bard_response.lower().index('thanks')
+            bard_response = bard_response[:str_index]
+
         elif 'sincerely' in bard_response.lower():
             str_index = bard_response.lower().index('sincerely')
-        elif 'regards' in bard_response.lower():
-            str_index = bard_response.lower().index('regards')
-        if str_index > 0:
             bard_response = bard_response[:str_index]
-        response = bard_response.split(':')
+
+        elif 'best regards' in bard_response.lower():
+            str_index = bard_response.lower().index('regards')
+            bard_response = bard_response[:str_index]
+
         if 'Sure,' in bard_response:
             response = bard_response.split(':')
-            bard_response = ''.join(response[1:])
-        bard_response = ''.join(bard_response.split('\n'))
-        return bard_response
+            bard_response = ' '.join(response[1:])
+        if 'Hi' not in bard_response and 'Dear ' not in bard_response:
+            bard_response = f'Hi [Client Name],\n{bard_response}'
+
+        proposal_response = {
+            'bard_response': bard_response,
+            'subject_line': subject_line,
+            'closing': closing_word
+        }
+        return proposal_response
     except Exception as e:
         print("Error with generate proposal:", str(e))
         return f'Error with generate proposal: {str(e)}'

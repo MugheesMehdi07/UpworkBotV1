@@ -180,7 +180,11 @@ def write_response(job_dict):
     global key_index
     try:
         API_KEYS = [
-            "ZQgDduUgpJyco4jvBvzKM11firS5fwjWsV54xQNyYbXlilIMFo15akOYnGryXwWRxnYbaA.",
+            "aggGc0rADR67gsgo1URb-sruZZrn-Pqi8uvn1zr19HDb9hnI7_AATT_xbQVu5k5hFnGKSg.",
+            "aQjAjb1-R7nFlp9eMjb_gqzeVIySua1eHWiKfetlFJy7szHbrmWTlQroO-m8kxxu6iYTFg.",
+            "aghlBFt8ebPpL80jdTr6_k-mOt-J9u7ybkI7lzqA23KyrDc3MKCEF3TBJlkhlGzW8ljhZjdw.",
+            # "aghlBBvXbL_Z-4tO978RcNsLX9yD98y9ZWP6SRbQt-Sb33e6lXY5R4XtDAUxhFn9CkjA.",
+            # "ZQgDduUgpJyco4jvBvzKM11firS5fwjWsV54xQNyYbXlilIMFo15akOYnGryXwWRxnYbaA.",
             # "ZwgGcyldhHBJf6GHh6GOc2ob_2vipNxaxf70l3YjDP-eOxfYO_F7hwfcw5XBni_qRKFGYA.",    # error
             # "ZgiPGLZC2OHOGd-ehwwDeRkkwvlt17FkpuYn0WluAF3Qu1EpFhatAfAcBUulcVnvEsjz8Q.",  # error
             # "YwjU50L0GNkYG5ylXwWeKIIGXvLrfuK6Wk4ewiZU8-aoSW8u3poWgKmBMHCrvy5Ab_kA8g.",  # error
@@ -205,7 +209,6 @@ def write_response(job_dict):
         game_portfolio = "https://play.google.com/store/apps/developer?id=Tap2Play,+LLC"
         app_portfolio = "https://apps.apple.com/us/app/grocerapp-online-grocery/id1119311709?platform=iphone \n https://play.google.com/store/apps/details?id=com.barfee.mart"
         web_portfolio = "http://www.xiqinc.com/ (B2B Marketing Platform)"
-
         input_text = f"""
         Please write a proposal response for the following project with title: {job_dict['Job Title']},
         and description: {job_dict['Job Description']}. If the project is related to Game Development,
@@ -216,18 +219,22 @@ def write_response(job_dict):
         mention Rootpointers as the agency which has more than 75 resources. In the end, suggest scheduling a call
         to discuss more details about the project. Please keep the proposal concise and under 150 words.
         """
+        try:
+            bard_response = Bard().get_answer(input_text)['content']
+        except Exception as e:
+            print('in bard exception', str(e))
+            return 'An error occurred while attempting to generate the proposal'
 
-        bard_response = Bard().get_answer(input_text)['content']
+        if bard_response is None:
+            return 'An error occurred while attempting to generate the proposal'
 
         for a in rejection_list:
             if a in str(bard_response.lower()):
                 bard_response = write_response(job_dict)
                 break
-        if bard_response is None:
-            return "Error with generate proposal:"
+
         if bard_response:
             lines = bard_response.split('\n')
-
             for line in range(len(lines) - 1, -1, -1):
                 if "subject" in lines[line].lower():
                     subject_line = '{0} \n'.format(line)
@@ -243,17 +250,17 @@ def write_response(job_dict):
         for character in special_characters:
             bard_response = re.sub(re.escape(character), '', bard_response)
 
-        if 'thanks' in bard_response.lower():
-            str_index = bard_response.lower().index('thanks')
-            bard_response = bard_response[:str_index]
-
-        elif 'sincerely' in bard_response.lower():
-            str_index = bard_response.lower().index('sincerely')
-            bard_response = bard_response[:str_index]
-
-        elif 'best regards' in bard_response.lower():
-            str_index = bard_response.lower().index('regards')
-            bard_response = bard_response[:str_index]
+        # if 'thanks' in bard_response.lower():
+        #     str_index = bard_response.lower().index('thanks')
+        #     bard_response = bard_response[:str_index]
+        #
+        # elif 'sincerely' in bard_response.lower():
+        #     str_index = bard_response.lower().index('sincerely')
+        #     bard_response = bard_response[:str_index]
+        #
+        # elif 'best regards' in bard_response.lower():
+        #     str_index = bard_response.lower().index('regards')
+        #     bard_response = bard_response[:str_index]
 
         if 'Sure,' in bard_response:
             response = bard_response.split(':')
@@ -268,8 +275,7 @@ def write_response(job_dict):
         }
         return proposal_response
     except Exception as e:
-        print("Error with generate proposal:", str(e))
-        return f'Error with generate proposal: {str(e)}'
+        return 'An error occurred while attempting to generate the proposal'
 
 
 def broadcast_to_discord(job_dict, job_response=None):

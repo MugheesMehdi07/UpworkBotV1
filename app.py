@@ -33,11 +33,11 @@ def get_jobs():
                     'posted_on': str(posted)
                 }
                 jobs_list.append(job_dict)
-            print('jobs list', jobs_list)
+            # print('jobs list', jobs_list)
             response = jsonify({'success': True, 'message': '', 'data': jobs_list})
             response.status_code = 200
             return response
-        response = jsonify({'success': False, 'message': 'Not found', 'data': None})
+        response = jsonify({'success': False, 'message': 'Jobs are not available', 'data': None})
         response.status_code = 400
         return response
     except Exception as e:
@@ -63,7 +63,7 @@ def get_job():
             response = jsonify({'success': True, 'message': '', 'data': job_dict})
             response.status_code = 200
             return response
-        response = jsonify({'success': False, 'message': 'Not found', 'data': None})
+        response = jsonify({'success': False, 'message': 'Job is not available', 'data': None})
         response.status_code = 400
         return response
     except Exception as e:
@@ -87,13 +87,15 @@ def get_proposal():
             }
             from JobParser import write_response
             bard_response = write_response(job_dict)
-            print('bard', bard_response)
-            response = jsonify({'success': True, 'message': '', 'data': bard_response})
-            response.status_code = 200
+            print('bard response', bard_response)
+            if 'An error occurred while' not in bard_response:
+                print('bard', bard_response)
+                response = jsonify({'success': True, 'message': '', 'data': bard_response})
+                response.status_code = 200
+                return response
+            response = jsonify({'success': False, 'message': '', 'data': bard_response})
+            response.status_code = 400
             return response
-        response = jsonify({'success': False, 'message': 'Not found', 'data': None})
-        response.status_code = 400
-        return response
     except Exception as e:
         response = jsonify({'success': False, 'message': 'Something went wrong', 'data': None})
         response.status_code = 400

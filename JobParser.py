@@ -253,6 +253,9 @@ def write_response(job_dict):
         str_index = 0
         for character in special_characters:
             bard_response = re.sub(re.escape(character), '', bard_response)
+        
+        if 'bard' in bard_response.lower():
+            bard_response.replace("Bard", "[Your Identity]")
 
         # if 'thanks' in bard_response.lower():
         #     str_index = bard_response.lower().index('thanks')

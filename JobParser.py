@@ -203,9 +203,13 @@ def write_response(job_dict):
             "language model",
             'unable'
         ]
-        os.environ['_BARD_API_KEY'] = API_KEYS[key_index]
-        updated_index = (key_index + 1) % len(API_KEYS)
-        key_index = updated_index
+        try:
+            os.environ['_BARD_API_KEY'] = API_KEYS[key_index]
+            updated_index = (key_index + 1) % len(API_KEYS)
+            key_index = updated_index
+        except Exception as e:
+            print('in bard exception', str(e))
+            return 'An error occurred while attempting to generate the proposal'
         game_portfolio = "https://play.google.com/store/apps/developer?id=Tap2Play,+LLC"
         app_portfolio = "https://apps.apple.com/us/app/grocerapp-online-grocery/id1119311709?platform=iphone \n https://play.google.com/store/apps/details?id=com.barfee.mart"
         web_portfolio = "http://www.xiqinc.com/ (B2B Marketing Platform)"

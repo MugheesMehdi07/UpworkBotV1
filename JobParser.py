@@ -1,4 +1,6 @@
 import asyncio
+import threading
+import openai
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.service import Service
@@ -8,16 +10,18 @@ from collections import deque
 from queue import Queue
 from threading import Thread
 from datetime import datetime, date
-import os
 import ssl
 from bs4 import BeautifulSoup
 import feedparser
-import re
 import discord as ds
 from discord.ext import commands
 from models import Jobs, db, JobStatus
 import time
-from sqlalchemy import cast, Date
+from signals import notification
+
+
+
+
 
 if hasattr(ssl, '_create_unverified_context'):
     ssl._create_default_https_context = ssl._create_unverified_context
@@ -34,11 +38,12 @@ exclude_keywords = ['shopify', 'wordpress', 'woocommerce', 'unreal', 'wix', 'web
                     'ecommerce', 'crm', 'bigcommerce', 'nopcommerce', 'ux/ui', 'bubble.io', 'test', 'tester',
                     'testing', 'sqaurespace', 'Sharepoint', 'Perl', 'Squarespace', 'Data Entry', 'Typing',
                     'Word press', 'Php', 'Vba', 'Airtable']
-
 key_index = 0
 TEST = False
 job_links = Queue()
 discord_jobs = Queue()
+flag = None
+
 
 if TEST:
     webhook_url = webhook_url_test
@@ -95,7 +100,7 @@ def process_jobs():
             print(e)
 
 
-def rss_parsing(rss, us_only=""):
+def rss_parsing(rss, rs_only =''):
     global seen_links
     global job_links
     global discord_jobs
@@ -137,6 +142,8 @@ def rss_parsing(rss, us_only=""):
                                            job_description=data['Job Description'], posted_on=data['Job Posted'])
                             db.session.add(new_job)
                             db.session.commit()
+                            print('new job', new_job)
+                            notification(new_job)
                             today = datetime.now()
                             date_now = date.today()
                             job_status_obj = JobStatus.query.filter(
@@ -148,10 +155,10 @@ def rss_parsing(rss, us_only=""):
                                 job_status_obj = JobStatus(total_jobs=1, added_on=today)
                                 db.session.add(job_status_obj)
                                 db.session.commit()
-                            qs = Jobs.query.with_entities(Jobs.id, Jobs.job_title, Jobs.job_link).order_by(
-                                Jobs.created_at.desc()).first()
                         except Exception as e:
-                            print('An error occurred in creating job object', str(e))
+                                print('An error occurred in creating job object', str(e))
+                        qs = Jobs.query.with_entities(Jobs.id, Jobs.job_title, Jobs.job_link).order_by(
+                            Jobs.created_at.desc()).first()
 
                         if qs:
                             job_dict = {
@@ -159,11 +166,13 @@ def rss_parsing(rss, us_only=""):
                                 'job_title': qs[1],
                                 'job_link': qs[2]
                             }
+                            global flag
                             if flag == 'start':
                                 if job_dict not in discord_jobs.queue:
                                     discord_jobs.put(job_dict)
                             if job_dict not in job_links.queue:
                                 job_links.put(job_dict)
+
             else:
                 print("Link contains excluded keywords")
     except Exception as e:
@@ -179,21 +188,22 @@ def write_response(job_dict):
     response_lines = []
     global key_index
     try:
-        API_KEYS = [
-            "aggGc0rADR67gsgo1URb-sruZZrn-Pqi8uvn1zr19HDb9hnI7_AATT_xbQVu5k5hFnGKSg.",
-            "aQjAjb1-R7nFlp9eMjb_gqzeVIySua1eHWiKfetlFJy7szHbrmWTlQroO-m8kxxu6iYTFg.",
-            "aghlBFt8ebPpL80jdTr6_k-mOt-J9u7ybkI7lzqA23KyrDc3MKCEF3TBJlkhlGzW8ljhZjdw.",
-            # "aghlBBvXbL_Z-4tO978RcNsLX9yD98y9ZWP6SRbQt-Sb33e6lXY5R4XtDAUxhFn9CkjA.",
-            # "ZQgDduUgpJyco4jvBvzKM11firS5fwjWsV54xQNyYbXlilIMFo15akOYnGryXwWRxnYbaA.",
-            # "ZwgGcyldhHBJf6GHh6GOc2ob_2vipNxaxf70l3YjDP-eOxfYO_F7hwfcw5XBni_qRKFGYA.",    # error
-            # "ZgiPGLZC2OHOGd-ehwwDeRkkwvlt17FkpuYn0WluAF3Qu1EpFhatAfAcBUulcVnvEsjz8Q.",  # error
-            # "YwjU50L0GNkYG5ylXwWeKIIGXvLrfuK6Wk4ewiZU8-aoSW8u3poWgKmBMHCrvy5Ab_kA8g.",  # error
-            "ZgjnhpFJL0_mlhMTlQ5yl4KUje3WJLsMNT9hDhcahC27-RmPvU5jmcOxakx-yFHkfLCWdw.",
-            # "ZQgCIRSLQ5RLe4r257amvGTgilDi47VK6s3VytwCdhRRZdaKYO-kU7fYZd8tfaNedl-h3w.",  # error
-            # "YwiGFUYqFLhmxJMMeAaGLKlz2TzqBWHgCbSqx1-yXDWP6m-cI6w85MCC2KDTf3dMvkS9RQ.",  # error
-            # "CjIBSAxbGfOLIQ6zZqhOAmiExXeeof1hqV3qVpEdO406f0hXHtZerKGtw8eV4qHDN43j0BAA.",    # error
-            # "ZggDMrw-qa3ngHXElhXflwLjQlYYiCabg-1xl46x7MOAGjXmKOhbhnsOm1B0V163RlKh-Q."   #error
-        ]
+        # API_KEYS = [
+        #     "aggGc0rADR67gsgo1URb-sruZZrn-Pqi8uvn1zr19HDb9hnI7_AATT_xbQVu5k5hFnGKSg.",
+        #     "aQjAjb1-R7nFlp9eMjb_gqzeVIySua1eHWiKfetlFJy7szHbrmWTlQroO-m8kxxu6iYTFg.",
+        #     "aghlBFt8ebPpL80jdTr6_k-mOt-J9u7ybkI7lzqA23KyrDc3MKCEF3TBJlkhlGzW8ljhZjdw.",
+        #     # "aghlBBvXbL_Z-4tO978RcNsLX9yD98y9ZWP6SRbQt-Sb33e6lXY5R4XtDAUxhFn9CkjA.",
+        #     # "ZQgDduUgpJyco4jvBvzKM11firS5fwjWsV54xQNyYbXlilIMFo15akOYnGryXwWRxnYbaA.",
+        #     # "ZwgGcyldhHBJf6GHh6GOc2ob_2vipNxaxf70l3YjDP-eOxfYO_F7hwfcw5XBni_qRKFGYA.",    # error
+        #     # "ZgiPGLZC2OHOGd-ehwwDeRkkwvlt17FkpuYn0WluAF3Qu1EpFhatAfAcBUulcVnvEsjz8Q.",  # error
+        #     # "YwjU50L0GNkYG5ylXwWeKIIGXvLrfuK6Wk4ewiZU8-aoSW8u3poWgKmBMHCrvy5Ab_kA8g.",  # error
+        #     "ZgjnhpFJL0_mlhMTlQ5yl4KUje3WJLsMNT9hDhcahC27-RmPvU5jmcOxakx-yFHkfLCWdw.",
+        #     # "ZQgCIRSLQ5RLe4r257amvGTgilDi47VK6s3VytwCdhRRZdaKYO-kU7fYZd8tfaNedl-h3w.",  # error
+        #     # "YwiGFUYqFLhmxJMMeAaGLKlz2TzqBWHgCbSqx1-yXDWP6m-cI6w85MCC2KDTf3dMvkS9RQ.",  # error
+        #     # "CjIBSAxbGfOLIQ6zZqhOAmiExXeeof1hqV3qVpEdO406f0hXHtZerKGtw8eV4qHDN43j0BAA.",    # error
+        #     # "ZggDMrw-qa3ngHXElhXflwLjQlYYiCabg-1xl46x7MOAGjXmKOhbhnsOm1B0V163RlKh-Q."   #error
+        # ]
+        API_KEY = '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'
         rejection_list = [
             "not programmed",
             "i'm unable to",
@@ -203,13 +213,14 @@ def write_response(job_dict):
             "language model",
             'unable'
         ]
-        try:
-            os.environ['_BARD_API_KEY'] = API_KEYS[key_index]
-            updated_index = (key_index + 1) % len(API_KEYS)
-            key_index = updated_index
-        except Exception as e:
-            print('in bard exception', str(e))
-            return 'An error occurred while attempting to generate the proposal'
+
+        # try:
+        #     os.environ['_BARD_API_KEY'] = API_KEYS[key_index]
+        #     updated_index = (key_index + 1) % len(API_KEYS)
+        #     key_index = updated_index
+        # except Exception as e:
+        #     print('in bard exception', str(e))
+        #     return 'An error occurred while attempting to generate the proposal'
         game_portfolio = "https://play.google.com/store/apps/developer?id=Tap2Play,+LLC"
         app_portfolio = "https://apps.apple.com/us/app/grocerapp-online-grocery/id1119311709?platform=iphone \n https://play.google.com/store/apps/details?id=com.barfee.mart"
         web_portfolio = "http://www.xiqinc.com/ (B2B Marketing Platform)"
@@ -223,66 +234,70 @@ def write_response(job_dict):
         mention Rootpointers as the agency which has more than 75 resources. In the end, suggest scheduling a call
         to discuss more details about the project. Please keep the proposal concise and under 150 words.
         """
-        try:
-            bard_response = Bard().get_answer(input_text)['content']
-        except Exception as e:
-            print('in bard exception', str(e))
-            return 'An error occurred while attempting to generate the proposal'
-
-        if bard_response is None:
-            return 'An error occurred while attempting to generate the proposal'
-
-        for a in rejection_list:
-            if a in str(bard_response.lower()):
-                bard_response = write_response(job_dict)
-                break
-
-        if bard_response:
-            lines = bard_response.split('\n')
-            for line in range(len(lines) - 1, -1, -1):
-                if "subject" in lines[line].lower():
-                    subject_line = '{0} \n'.format(line)
-                    del lines[line]
-                if any(word in lines[line].lower() for word in closing_words):
-                    closing_word = '\n {0}'.format(line)
-                    del lines[line]
-                if "i hope this proposal is concise" in lines[line].lower():
-                    del lines[line]
-            bard_response = ''.join(lines)
-        special_characters = ['###', '***', '**', '*', '\*\*\*', '\*\*', '\*',  '>>', '>', '\n\n\n']
-        str_index = 0
-        for character in special_characters:
-            bard_response = re.sub(re.escape(character), '', bard_response)
-        
-        if 'bard' in bard_response.lower():
-            bard_response.replace("Bard", "[Your Identity]")
-
-        # if 'thanks' in bard_response.lower():
-        #     str_index = bard_response.lower().index('thanks')
-        #     bard_response = bard_response[:str_index]
+        openai.api_key = API_KEY
+        model = "gpt-3.5-turbo"
+        response = openai.ChatCompletion.create(model=model, messages=input_text)
+        print('res', response)
+        # try:
+        #     bard_response = Bard().get_answer(input_text)['content']
+        # except Exception as e:
+        #     print('in bard exception', str(e))
+        #     return 'An error occurred while attempting to generate the proposal'
         #
-        # elif 'sincerely' in bard_response.lower():
-        #     str_index = bard_response.lower().index('sincerely')
-        #     bard_response = bard_response[:str_index]
+        # if bard_response is None:
+        #     return 'An error occurred while attempting to generate the proposal'
         #
-        # elif 'best regards' in bard_response.lower():
-        #     str_index = bard_response.lower().index('regards')
-        #     bard_response = bard_response[:str_index]
-
-        if 'Sure,' in bard_response:
-            response = bard_response.split(':')
-            bard_response = ' '.join(response[1:])
-        if 'Hi' not in bard_response and 'Dear ' not in bard_response:
-            bard_response = f'Hi [Client Name],\n{bard_response}'
-
-        proposal_response = {
-            'bard_response': bard_response,
-            'subject_line': subject_line,
-            'closing': closing_word
-        }
-        return proposal_response
+        # for a in rejection_list:
+        #     if a in str(bard_response.lower()):
+        #         bard_response = write_response(job_dict)
+        #         break
+        #
+        # if bard_response:
+        #     lines = bard_response.split('\n')
+        #     for line in range(len(lines) - 1, -1, -1):
+        #         if "subject" in lines[line].lower():
+        #             subject_line = '{0} \n'.format(line)
+        #             del lines[line]
+        #         if any(word in lines[line].lower() for word in closing_words):
+        #             closing_word = '\n {0}'.format(line)
+        #             del lines[line]
+        #         if "i hope this proposal is concise" in lines[line].lower():
+        #             del lines[line]
+        #     bard_response = ''.join(lines)
+        # special_characters = ['###', '***', '**', '*', '\*\*\*', '\*\*', '\*',  '>>', '>', '\n\n\n']
+        # str_index = 0
+        # for character in special_characters:
+        #     bard_response = re.sub(re.escape(character), '', bard_response)
+        #
+        # if 'bard' in bard_response.lower():
+        #     bard_response.replace("Bard", "[Your Identity]")
+        #
+        # # if 'thanks' in bard_response.lower():
+        # #     str_index = bard_response.lower().index('thanks')
+        # #     bard_response = bard_response[:str_index]
+        # #
+        # # elif 'sincerely' in bard_response.lower():
+        # #     str_index = bard_response.lower().index('sincerely')
+        # #     bard_response = bard_response[:str_index]
+        # #
+        # # elif 'best regards' in bard_response.lower():
+        # #     str_index = bard_response.lower().index('regards')
+        # #     bard_response = bard_response[:str_index]
+        #
+        # if 'Sure,' in bard_response:
+        #     response = bard_response.split(':')
+        #     bard_response = ' '.join(response[1:])
+        # if 'Hi' not in bard_response and 'Dear ' not in bard_response:
+        #     bard_response = f'Hi [Client Name],\n{bard_response}'
+        #
+        # proposal_response = {
+        #     'bard_response': bard_response,
+        #     'subject_line': subject_line,
+        #     'closing': closing_word
+        # }
+        return response
     except Exception as e:
-        return 'An error occurred while attempting to generate the proposal'
+        return f'An error occurred while attempting to generate the proposal {str(e)}'
 
 
 def broadcast_to_discord(job_dict, job_response=None):
@@ -291,16 +306,14 @@ def broadcast_to_discord(job_dict, job_response=None):
     job_id = job_dict['id']
     job_title = job_dict['job_title']
     job_link = job_dict['job_link']
-
     message = f'Job Title: {job_title}\nApp Link: {job_id}\nJob Main Link: {job_link}'
     discord.post(content=message)
-    print('after sending to discord')
 
 
 discord_token = 'MTEzNzQ3NDgzMzg2OTk3OTcyOQ.GBfeTV.JlkqAuuMmYY1YXKL7lUnlu8Y7_GMvnL-wx4Hjo'
-flag = ''
+flag = None
 intents = ds.Intents.all()
-bot = commands.Bot(command_prefix='!', intents=intents)
+bot = commands.Bot(command_prefix='Bidding ', intents=intents)
 
 
 @bot.event
@@ -308,29 +321,36 @@ async def on_ready():
     print(f'We have logged in as {bot.user}')
 
 
+def flag_set(flag):
+    global discord
+    discord = Discord(url=webhook_url)
+    if flag == 'true':
+        discord.post(content="Bidding Started")
+    else:
+        discord.post(content="Bidding Stopped")
+
 @bot.event
 async def on_message(message):
     print(f'Message content: {message.content}')
     global flag
 
-    # Perform any additional checks or actions based on the message content
-    if message.content.lower() == '!start':
+    if message.content.lower() == 'bidding started':
         flag = 'start'
-        await message.channel.send('Bidding started')
-    elif message.content.lower() == '!stop':
+        # await message.channel.send('Bidding started')
+    elif message.content.lower() == 'bidding stopped':
         flag = 'stop'
-        await message.channel.send("Bidding stopped.")
+        # await message.channel.send("Bidding stopped")
 
 
 async def run_bot():
+    print('in run bot')
     await bot.start(discord_token)
 
 
 def main():
     global discord
-    print('in job parser main thread')
     discord = Discord(url=webhook_url)
-    discord.post(content="Bidding Started")
+    # discord.post(content="Bidding Started")
 
     thread1 = Thread(target=fetch_jobs)
     thread2 = Thread(target=process_jobs)

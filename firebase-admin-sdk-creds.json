@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "upworkbot-539bd",
+  "private_key_id": "714d6610cced0bbe4beb34d495f5e081afe578bd",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC9Wv29A4XqONDM\nbAnR6jVrgGgMvK2V+29DSw4aKSzHBh5x3Zn/ainSwqYQZ9mPUKHrW7axtsdlzuEz\n/dn/CNrJzGe8MI2sxw2iydoh4VeLtelIglMjai9g8NE9LiF/5Vb8WjR3b5c0N6GY\n4QJSb9Y/R0IZmYZgl1GaCKj+RyG7sq0tP4kDChVHtkBxmDBIl1wL/3hY/DosyplG\n2tnDiGPp1GXqPTyjkakkhZwUx2BgkgRqYZF20JQ8huMzpCDj/kAmd52ViIwhUGCJ\nsUh1fSIa1d/EujGGwGu3Wv0F5N66lE87R0Szu1S+42wO1Goa60ekt2Skr6ii5/oP\nIPgtC+f1AgMBAAECggEAIHp/9TCqgo82OSn60TeT7Bl9P1oJiCU1Y1x3UcNoO8bv\n5+XzqRyjidP7OesmJO/WphD4GClasDq44/sRri3toRlfXacSVeVakGaA9Li7FGqi\nVd6MthFbiQwlR5InCtHihqxOPYI1dC5qmFdX1535KKdnTg7IPr8Vrw73NY4r2g6z\nH+ESGH5eqY7aZfMtT9N5JoPnZuNp1X9T+uFks1ym7RdxUH+ztkQHmMfYcOH81r+u\nrXWFrYH+Ci3CtiiKKUWja3886sGcpSCSiLfFKGNq2tvidu5FxSOG/GbEyedaJr0k\n0yWg9+8xK6i8urQ51KIdx17TTeW3Y/NI4jDWCdpK4QKBgQDdMh7Avu4eEQTTeAI5\nJEEBO+gMsY0QRSi7AANalMZR7ZMNkBUZDpCQLrJRLhBTS2MFRwl0Ozyx5kACYMGJ\naygu8e4mDQ6uUZ4UzDXYQGUR6KaBa5R4H75ehzH1z1AUq9QJDdWKKdGqWCMMePSb\nv1bthoccFVDr76XXa6krh++tLQKBgQDbJlNRX8TOkGj15TaDuXEuypoNgxGXsv+Y\nIPXi9cr33qQVPTvVYK0QvkUiNe9sK1ShyP7/TqtrdDqbC/knOXBGg/rNdWzUqYXN\nuewr3BS7lc2vONwxzEa2K9DpgDp3nU7kuM82XqOQyMWaPZqnGVTwwV8oxi+iZ3Os\nC2/HHjay6QKBgA1wlCnF8BXnltF6gzgRmdmHWEwdJaMNcLIcCBgi3gHwW3UBgiap\nmeMI01DXaaqF9BhH/q0PRFrS0KTUWC4PUru3e27YcEHrN52v4r2m+/0gk61dagH6\ne8imkkSLOiRnZFTAgG8Kp3CgNlD1sHceIxv/hooQSYBsaTkzk23PrqJpAoGBAIjc\n4ZHjboTWuUZANRCE4sOnMhiYL4d++ZMnmoh4mp68g9rj2BdFfjADtCdOac0zLnKv\nlVka54F/IA6uppaxj4XqbNqdqC8UBAVcRLuLgcM5JjB1IUdUXSDuMlVxiJIlQx0i\nsf4xkpMcYBQYvxn2fw6wpV5Qj3UsiJf8uH0xSFXpAoGAIsjYpeNKybPz0kjXo+cy\necaayJ0gfi060ZC5GZNNocHNfnOT3cCY54tFX1XrbxAwgiNjMYpx/sb9s8GXrE1r\nlnQ15PDNKSGuL8ldxVnrtQyB8dKtlaJ5r6/1sc0du3+6TNJRzpXmTFrImKCmFnVA\nkdVwwSAfRv9f855WpIX+QeQ=\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-c51pj@upworkbot-539bd.iam.gserviceaccount.com",
+  "client_id": "108241393274040939068",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-c51pj%40upworkbot-539bd.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

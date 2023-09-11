@@ -1,5 +1,7 @@
 from app import db
 from datetime import datetime
+from sqlalchemy import event
+from signals import notification
 
 
 class Jobs(db.Model):
@@ -14,6 +16,7 @@ class Jobs(db.Model):
     def __repr__(self):
         return f"{self.job_title}"
 
+
 class JobStatus(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     total_jobs = db.Column(db.Integer, nullable=True)
@@ -23,4 +26,3 @@ class JobStatus(db.Model):
 
     # def __repr__(self):
     #     return f"JobStatus(id={self.id}, total_jobs={self.total_jobs}, posted_on={self.posted_on})"
-

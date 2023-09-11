@@ -1,3 +1,5 @@
+import asyncio
+
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -33,11 +35,10 @@ def get_jobs():
                     'posted_on': str(posted)
                 }
                 jobs_list.append(job_dict)
-            # print('jobs list', jobs_list)
             response = jsonify({'success': True, 'message': '', 'data': jobs_list})
             response.status_code = 200
             return response
-        response = jsonify({'success': False, 'message': 'Jobs are not available', 'data': None})
+        response = jsonify({'success': False, 'message': 'Jobs are not available', 'data': []})
         response.status_code = 400
         return response
     except Exception as e:
@@ -98,6 +99,22 @@ def get_proposal():
             return response
     except Exception as e:
         response = jsonify({'success': False, 'message': 'Something went wrong', 'data': None})
+        response.status_code = 400
+        return response
+
+
+@app.route("/flag/", methods=['GET'])
+def flag():
+    try:
+        flag = request.args.get('flag', None)
+        print('params', flag)
+        from JobParser import flag_set
+        flag_set(flag)
+        response = jsonify({'success': True, 'message': '', 'data':''})
+        response.status_code = 200
+        return response
+    except Exception as e:
+        response = jsonify({'success': False, 'message': 'Something went wrong', 'data': str(e)})
         response.status_code = 400
         return response
 

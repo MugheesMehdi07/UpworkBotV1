@@ -70,10 +70,12 @@ def fetch_jobs():
             if rss.bozo:
                 print("The RSS feed is not well-formed XML.")
                 print("Exception: ", rss.bozo_exception)
-                return
+                continue
+                
             elif 'status' not in rss or rss.status != 200:
                 print(f"Failed to retrieve feed: HTTP status code {rss.status}")
-                return
+                continue
+                
 
             rss_parsing(rss)
 

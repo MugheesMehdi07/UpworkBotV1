@@ -23,7 +23,7 @@ migrate = Migrate(app, db)
 def get_jobs():
     try:
         from models import Jobs
-        qs = Jobs.query.with_entities(Jobs.id, Jobs.job_title, Jobs.posted_on).order_by(Jobs.id.desc()).limit(50).all()
+        qs = Jobs.query.with_entities(Jobs.id, Jobs.job_link, Jobs.job_title, Jobs.posted_on).order_by(Jobs.id.desc()).limit(50).all()
         jobs_list = []
         PST = pytz.timezone('Asia/Karachi')
         if qs:
@@ -32,6 +32,7 @@ def get_jobs():
                 job_dict = {
                     'id': job.id,
                     'job_title': job.job_title,
+                    'job_link': job.job_link,
                     'posted_on': str(posted)
                 }
                 jobs_list.append(job_dict)

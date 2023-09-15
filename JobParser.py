@@ -17,7 +17,7 @@ import discord as ds
 from discord.ext import commands
 from models import Jobs, db, JobStatus
 import time
-from signals import notification
+# from signals import notification
 
 
 
@@ -145,7 +145,7 @@ def rss_parsing(rss, rs_only =''):
                             db.session.add(new_job)
                             db.session.commit()
                             print('new job', new_job)
-                            notification(new_job)
+                            # notification(new_job)
                             today = datetime.now()
                             date_now = date.today()
                             job_status_obj = JobStatus.query.filter(
@@ -328,7 +328,7 @@ def flag_set(flag):
     discord = Discord(url=webhook_url)
     if flag == 'true':
         discord.post(content="Bidding Started")
-    else:
+    elif flag == 'false':
         discord.post(content="Bidding Stopped")
 
 @bot.event
@@ -371,3 +371,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

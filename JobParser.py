@@ -107,7 +107,8 @@ def rss_parsing(rss, rs_only =''):
     global job_links
     global discord_jobs
     global flag
-    base_url = 'http://upworkbot.rootpointers.net/jobs/'
+    prod_url = 'http://upworkbot.rootpointers.net/jobs/'
+    dev_url = 'http://localhost:3000/jobs/'
 
     try:
         print("Parsing RSS for New Links------------ ")
@@ -144,7 +145,6 @@ def rss_parsing(rss, rs_only =''):
                                            job_description=data['Job Description'], posted_on=data['Job Posted'])
                             db.session.add(new_job)
                             db.session.commit()
-                            print('new job', new_job)
                             # notification(new_job)
                             today = datetime.now()
                             date_now = date.today()
@@ -164,7 +164,7 @@ def rss_parsing(rss, rs_only =''):
 
                         if qs:
                             job_dict = {
-                                'id': base_url + str(qs[0]),
+                                'id': prod_url + str(qs[0]),
                                 'job_title': qs[1],
                                 'job_link': qs[2]
                             }
@@ -338,10 +338,8 @@ async def on_message(message):
 
     if message.content.lower() == 'bidding started':
         flag = 'start'
-        # await message.channel.send('Bidding started')
     elif message.content.lower() == 'bidding stopped':
         flag = 'stop'
-        # await message.channel.send("Bidding stopped")
 
 
 async def run_bot():

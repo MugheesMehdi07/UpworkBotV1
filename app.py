@@ -89,9 +89,7 @@ def get_proposal():
             }
             from JobParser import write_response
             bard_response = write_response(job_dict)
-            print('bard response', bard_response)
             if 'An error occurred while' not in bard_response:
-                print('bard', bard_response)
                 response = jsonify({'success': True, 'message': '', 'data': bard_response})
                 response.status_code = 200
                 return response
@@ -108,7 +106,6 @@ def get_proposal():
 def flag():
     try:
         flag = request.args.get('flag', None)
-        print('params', flag)
         from JobParser import flag_set
         flag_set(flag)
         response = jsonify({'success': True, 'message': '', 'data':''})

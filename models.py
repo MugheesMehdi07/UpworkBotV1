@@ -1,7 +1,7 @@
 from app import db
 from datetime import datetime
 from sqlalchemy import event
-from signals import notification
+# from signals import notification
 
 
 class Jobs(db.Model):

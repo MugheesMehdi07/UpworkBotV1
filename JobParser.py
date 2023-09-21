@@ -4,7 +4,6 @@ import openai
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.service import Service
-from bardapi import Bard
 from discordwebhook import Discord
 from collections import deque
 from queue import Queue
@@ -183,121 +182,69 @@ def rss_parsing(rss, rs_only =''):
 
 def write_response(job_dict):
     print("Getting AI Proposal Now -------------- ")
-    bard_response = ''
-    subject_line = ''
-    closing_word = ''
-    closing_words = ["thanks,", "sincerely,", "best regards,"]
-    response_lines = []
+    subject = ''
+    response = ''
+    closing_index = 0
+    closing = ''
+    closing_words = ["thanks", "sincerely", "best regards", "warm regards"]
+    proposal_by = ''
     global key_index
     try:
-        # API_KEYS = [
-        #     "aggGc0rADR67gsgo1URb-sruZZrn-Pqi8uvn1zr19HDb9hnI7_AATT_xbQVu5k5hFnGKSg.",
-        #     "aQjAjb1-R7nFlp9eMjb_gqzeVIySua1eHWiKfetlFJy7szHbrmWTlQroO-m8kxxu6iYTFg.",
-        #     "aghlBFt8ebPpL80jdTr6_k-mOt-J9u7ybkI7lzqA23KyrDc3MKCEF3TBJlkhlGzW8ljhZjdw.",
-        #     # "aghlBBvXbL_Z-4tO978RcNsLX9yD98y9ZWP6SRbQt-Sb33e6lXY5R4XtDAUxhFn9CkjA.",
-        #     # "ZQgDduUgpJyco4jvBvzKM11firS5fwjWsV54xQNyYbXlilIMFo15akOYnGryXwWRxnYbaA.",
-        #     # "ZwgGcyldhHBJf6GHh6GOc2ob_2vipNxaxf70l3YjDP-eOxfYO_F7hwfcw5XBni_qRKFGYA.",    # error
-        #     # "ZgiPGLZC2OHOGd-ehwwDeRkkwvlt17FkpuYn0WluAF3Qu1EpFhatAfAcBUulcVnvEsjz8Q.",  # error
-        #     # "YwjU50L0GNkYG5ylXwWeKIIGXvLrfuK6Wk4ewiZU8-aoSW8u3poWgKmBMHCrvy5Ab_kA8g.",  # error
-        #     "ZgjnhpFJL0_mlhMTlQ5yl4KUje3WJLsMNT9hDhcahC27-RmPvU5jmcOxakx-yFHkfLCWdw.",
-        #     # "ZQgCIRSLQ5RLe4r257amvGTgilDi47VK6s3VytwCdhRRZdaKYO-kU7fYZd8tfaNedl-h3w.",  # error
-        #     # "YwiGFUYqFLhmxJMMeAaGLKlz2TzqBWHgCbSqx1-yXDWP6m-cI6w85MCC2KDTf3dMvkS9RQ.",  # error
-        #     # "CjIBSAxbGfOLIQ6zZqhOAmiExXeeof1hqV3qVpEdO406f0hXHtZerKGtw8eV4qHDN43j0BAA.",    # error
-        #     # "ZggDMrw-qa3ngHXElhXflwLjQlYYiCabg-1xl46x7MOAGjXmKOhbhnsOm1B0V163RlKh-Q."   #error
-        # ]
         API_KEY = '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'
-        rejection_list = [
-            "not programmed",
-            "i'm unable to",
-            "text-based ai",
-            "language model ai",
-            "can't assist",
-            "language model",
-            'unable'
-        ]
 
-        # try:
-        #     os.environ['_BARD_API_KEY'] = API_KEYS[key_index]
-        #     updated_index = (key_index + 1) % len(API_KEYS)
-        #     key_index = updated_index
-        # except Exception as e:
-        #     print('in bard exception', str(e))
-        #     return 'An error occurred while attempting to generate the proposal'
+        print('in api proposal by ', job_dict['proposal_by'])
         game_portfolio = "https://play.google.com/store/apps/developer?id=Tap2Play,+LLC"
         app_portfolio = "https://apps.apple.com/us/app/grocerapp-online-grocery/id1119311709?platform=iphone \n https://play.google.com/store/apps/details?id=com.barfee.mart"
         web_portfolio = "http://www.xiqinc.com/ (B2B Marketing Platform)"
-        input_text = f"""
-        Please write a proposal response for the following project with title: {job_dict['Job Title']},
-        and description: {job_dict['Job Description']}. If the project is related to Game Development,
-        please incorporate this link in the portfolio: {game_portfolio}. If it's related to Mobile App Development,
-        please provide this link: {app_portfolio}. If it's about Web Development, please include this link: {web_portfolio}.
-        Make sure the first two lines of the proposal are directly relevant to the project title and description.
-        If the project requires an individual, introduce yourself accordingly. If it requires a company/agency,
-        mention Rootpointers as the agency which has more than 75 resources. In the end, suggest scheduling a call
-        to discuss more details about the project. Please keep the proposal concise and under 150 words.
+        portfolio_mughees = f"""
+        https://www.smartmitt.com/ (AI based Training Platform for Baseball Batters and Pitchers)
+        https://xiqinc.com/ (Silicon Valley Based B2B Sales and Marketing Platform using AI to generate and analyze Leads)
+        https://www.sparrowcharts.com/ (Social Media Analytics Platform that comabines all in on platform to handle and track your social media activity)
         """
+        portfolio_company = f"""
+        Web Application Development:
+        Mobile App:
+        Mobile Games:
+        """
+        if job_dict['proposal_by'] == 'mughees':
+            proposal_by = f' Write on behalf of me named mughees, i have more than 7 years of experience in Web  Development (Django, Flask) with frontend (React, Vue.js) and also has Master in Data Science with expertise in AI Models building. Include the following application {portfolio_mughees} under portfolio that seem best suited. Make sure the first two lines of the proposalare directly relevant to the project title and description. Make bid  solution oriented describe  first how I will be doing this job then explain my relevant experience.'
+        elif job_dict['proposal_by'] == 'company':
+            proposal_by = f' Write on behalf of an organization RootPointers. Include the following application {portfolio_company} under portfolio that seem best suited. Make sure the first two lines of the proposal are directly relevant to the project title and description. Make bid  solution oriented describe  first how this organization will be doing this job then explain their relevant experience.'
+        else:
+            proposal_by = ''
+
+        input_text = f"""
+        Please write an Upwork proposal response for the following project with title: {job_dict['Job Title']}, and
+        description {job_dict['Job Description']}. {proposal_by if proposal_by else ''}
+         Keep proposal response concise and under 150 words.
+        """
+
+        print('input text', input_text)
         openai.api_key = API_KEY
         model = "gpt-3.5-turbo"
-        response = openai.ChatCompletion.create(model=model, messages=input_text)
-        print('res', response)
-        # try:
-        #     bard_response = Bard().get_answer(input_text)['content']
-        # except Exception as e:
-        #     print('in bard exception', str(e))
-        #     return 'An error occurred while attempting to generate the proposal'
-        #
-        # if bard_response is None:
-        #     return 'An error occurred while attempting to generate the proposal'
-        #
-        # for a in rejection_list:
-        #     if a in str(bard_response.lower()):
-        #         bard_response = write_response(job_dict)
-        #         break
-        #
-        # if bard_response:
-        #     lines = bard_response.split('\n')
-        #     for line in range(len(lines) - 1, -1, -1):
-        #         if "subject" in lines[line].lower():
-        #             subject_line = '{0} \n'.format(line)
-        #             del lines[line]
-        #         if any(word in lines[line].lower() for word in closing_words):
-        #             closing_word = '\n {0}'.format(line)
-        #             del lines[line]
-        #         if "i hope this proposal is concise" in lines[line].lower():
-        #             del lines[line]
-        #     bard_response = ''.join(lines)
-        # special_characters = ['###', '***', '**', '*', '\*\*\*', '\*\*', '\*',  '>>', '>', '\n\n\n']
-        # str_index = 0
-        # for character in special_characters:
-        #     bard_response = re.sub(re.escape(character), '', bard_response)
-        #
-        # if 'bard' in bard_response.lower():
-        #     bard_response.replace("Bard", "[Your Identity]")
-        #
-        # # if 'thanks' in bard_response.lower():
-        # #     str_index = bard_response.lower().index('thanks')
-        # #     bard_response = bard_response[:str_index]
-        # #
-        # # elif 'sincerely' in bard_response.lower():
-        # #     str_index = bard_response.lower().index('sincerely')
-        # #     bard_response = bard_response[:str_index]
-        # #
-        # # elif 'best regards' in bard_response.lower():
-        # #     str_index = bard_response.lower().index('regards')
-        # #     bard_response = bard_response[:str_index]
-        #
-        # if 'Sure,' in bard_response:
-        #     response = bard_response.split(':')
-        #     bard_response = ' '.join(response[1:])
-        # if 'Hi' not in bard_response and 'Dear ' not in bard_response:
-        #     bard_response = f'Hi [Client Name],\n{bard_response}'
-        #
-        # proposal_response = {
-        #     'bard_response': bard_response,
-        #     'subject_line': subject_line,
-        #     'closing': closing_word
-        # }
-        return response
+        print('before response')
+        completion_tokens = openai.ChatCompletion.create(model=model, messages=[{'role': 'system', 'content': 'You are a helpful assistant that generates proposals.'}, {'role': 'user', 'content': input_text}])
+        completion_tokens = completion_tokens['choices'][0]['message']['content']
+        if not completion_tokens:
+            return f'An error occurred while attempting to generate the proposal.'
+        if 'dear' in completion_tokens.lower():
+            sub_index = completion_tokens.lower().index('dear')
+            subject = completion_tokens[:sub_index]
+            completion_tokens = completion_tokens[sub_index:]
+        for word in closing_words:
+            if word in completion_tokens.lower():
+                closing_index = completion_tokens.lower().index(word)
+                closing = completion_tokens[closing_index - 5:]
+                completion_tokens = completion_tokens[:closing_index - 5]
+
+        response_dict = {
+            'subject': subject if 'subject' in subject.lower() else '',
+            'main': completion_tokens,
+            'closing': closing if any(keyword in closing.lower() for keyword in ['regards', 'sincerely']) else ''
+        }
+
+        return response_dict
+
     except Exception as e:
         return f'An error occurred while attempting to generate the proposal {str(e)}'
 

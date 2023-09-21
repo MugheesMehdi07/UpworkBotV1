@@ -1,6 +1,5 @@
 from app import db
 from datetime import datetime
-from sqlalchemy import event
 # from signals import notification
 
 
@@ -10,6 +9,7 @@ class Jobs(db.Model):
     job_link = db.Column(db.String, nullable=True)
     job_description = db.Column(db.String, nullable=True)
     posted_on = db.Column(db.DateTime, nullable=True)
+    bidding_done = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow)
 

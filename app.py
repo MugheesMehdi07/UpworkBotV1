@@ -23,7 +23,7 @@ migrate = Migrate(app, db)
 def get_jobs():
     try:
         from models import Jobs
-        qs = Jobs.query.with_entities(Jobs.id, Jobs.job_link, Jobs.job_title, Jobs.posted_on).order_by(Jobs.id.desc()).limit(50).all()
+        qs = Jobs.query.with_entities(Jobs.id, Jobs.job_link, Jobs.job_title, Jobs.posted_on, Jobs.bidding_done).order_by(Jobs.id.desc()).limit(50).all()
         jobs_list = []
         PST = pytz.timezone('Asia/Karachi')
         if qs:
@@ -33,7 +33,8 @@ def get_jobs():
                     'id': job.id,
                     'job_title': job.job_title,
                     'job_link': job.job_link,
-                    'posted_on': str(posted)
+                    'posted_on': str(posted),
+                    'bidding_done': job.bidding_done
                 }
                 jobs_list.append(job_dict)
             response = jsonify({'success': True, 'message': '', 'data': jobs_list})
@@ -62,6 +63,7 @@ def get_job():
                 'job_link': qs.job_link,
                 'job_description': description,
             }
+            print('job description', description)
             response = jsonify({'success': True, 'message': '', 'data': job_dict})
             response.status_code = 200
             return response
@@ -86,6 +88,7 @@ def get_proposal():
                 'Job Title': qs.job_title,
                 'Job Link': qs.job_link,
                 'Job Description': description,
+                'proposal_by': job_dict['proposal_by']
             }
             from JobParser import write_response
             bard_response = write_response(job_dict)
@@ -109,6 +112,25 @@ def flag():
         from JobParser import flag_set
         flag_set(flag)
         response = jsonify({'success': True, 'message': '', 'data':''})
+        response.status_code = 200
+        return response
+    except Exception as e:
+        response = jsonify({'success': False, 'message': 'Something went wrong', 'data': str(e)})
+        response.status_code = 400
+        return response
+
+
+@app.route("/job/bidding/", methods=['POST'])
+def bidding():
+    try:
+        job_dict = request.json
+        from models import Jobs
+        with app.app_context():
+            qs = Jobs.query.filter_by(id=int(job_dict['job_id'])).first()
+            if qs:
+                qs.bidding_done = True
+                db.session.commit()
+        response = jsonify({'success': True, 'message': '', 'data': ''})
         response.status_code = 200
         return response
     except Exception as e:

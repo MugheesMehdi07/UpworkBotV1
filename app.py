@@ -21,10 +21,10 @@ migrate = Migrate(app, db)
 admin = Admin()
 admin.init_app(app)
 # for dev
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///upworkbot.db'
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///upworkbot.db'
 
 # for prod
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:123456@localhost:5432/upworkbot'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:123456@localhost:5432/upworkbot'
 app.config["SECRET_KEY"] = "mysecret"
 images = UploadSet("images", IMAGES)
 app.config["UPLOADED_IMAGES_DEST"] = 'static/uploads'

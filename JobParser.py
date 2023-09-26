@@ -14,7 +14,7 @@ from bs4 import BeautifulSoup
 import feedparser
 import discord as ds
 from discord.ext import commands
-from models import Jobs, db, JobStatus
+from app import Jobs, db, JobStatus
 import time
 # from signals import notification
 

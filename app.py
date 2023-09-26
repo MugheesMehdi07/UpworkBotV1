@@ -1,38 +1,43 @@
-import asyncio
-from flask_admin import Admin
-from flask import Flask, jsonify, request, url_for
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
+from flask import jsonify, request, url_for
 from datetime import datetime, timedelta
-from flask_cors import CORS
-import sqlalchemy as sa
-import os
 import pytz
-from flask_uploads import UploadSet, configure_uploads, IMAGES
+from markupsafe import Markup
+from app_config import app, db, images, admin
+from datetime import datetime
 from flask_admin.contrib.sqla import ModelView
 from flask import url_for
-from markupsafe import Markup
 
 
-app = Flask(__name__)
-cors = CORS(app)
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
-admin = Admin()
-admin.init_app(app)
-# for dev
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///upworkbot.db'
+# ----------models defined ----------
+class Jobs(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    job_title = db.Column(db.String, nullable=True)
+    job_link = db.Column(db.String, nullable=True)
+    job_description = db.Column(db.String, nullable=True)
+    bid_SS = db.Column(db.String, nullable=True)
+    SS_upload_time = db.Column(db.DateTime, nullable=True)
+    bid_time_difference = db.Column(db.String, nullable=True)
+    posted_on = db.Column(db.DateTime, nullable=True)
+    bidding_done = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-# for prod
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:123456@localhost:5432/upworkbot'
-app.config["SECRET_KEY"] = "mysecret"
-images = UploadSet("images", IMAGES)
-app.config["UPLOADED_IMAGES_DEST"] = 'static/uploads'
-configure_uploads(app, images)
+    def __repr__(self):
+        return f"{self.job_title}"
+
+
+class JobStatus(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    total_jobs = db.Column(db.Integer, nullable=True)
+    added_on = db.Column(db.DateTime, default=datetime.now)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # ----------admin panel ---------
 
 
 class CustomJobView(ModelView):
-    column_list = ('id', 'job_title', 'posted_on', 'bidding_done',  'bid_SS', 'SS_upload_time', 'bid_time_difference')
+    column_list = ('id', 'job_title', 'posted_on', 'bidding_done', 'bid_SS', 'SS_upload_time', 'bid_time_difference')
     column_default_sort = ('id', True)
 
     def _format_image(self, context, model, bid_SS):
@@ -40,28 +45,25 @@ class CustomJobView(ModelView):
             image_name = model.bid_SS
             image_url = url_for('static', filename='uploads/' + model.bid_SS)
             return Markup(
-                f'<a href="{image_url}" target="_blank"><img src="{image_url}" style="max-height: 100px;"></a>')
+                f'<a href="{image_url}" target="_blank">{bid_SS}</a>')
         return ''
 
-def job_admin_panel(db):
-    from models import Jobs
-    custom_job_view = CustomJobView(Jobs, db.session)
 
-    custom_job_view.column_formatters = {
-        'bid_SS': lambda v, c, m, p: custom_job_view._format_image(v, m, 'bid_SS')
-    }
-    return custom_job_view
+custom_job_view = CustomJobView(Jobs, db.session)
 
+custom_job_view.column_formatters = {
+    'bid_SS': lambda v, c, m, p: custom_job_view._format_image(v, m, 'bid_SS')
+}
 
-custom_job_view = job_admin_panel(db)
 admin.add_view(custom_job_view)
 
+# --------------API's--------------
 
 @app.route("/", methods=['GET'])
 def get_jobs():
     try:
-        from models import Jobs
-        qs = Jobs.query.with_entities(Jobs.id, Jobs.job_link, Jobs.job_title, Jobs.posted_on, Jobs.bidding_done).order_by(Jobs.id.desc()).limit(50).all()
+        qs = Jobs.query.with_entities(Jobs.id, Jobs.job_link, Jobs.job_title, Jobs.posted_on,
+                                      Jobs.bidding_done).order_by(Jobs.id.desc()).limit(50).all()
         jobs_list = []
         PST = pytz.timezone('Asia/Karachi')
         if qs:
@@ -90,7 +92,6 @@ def get_jobs():
 @app.route("/jobs/", methods=['GET'])
 def get_job():
     try:
-        from models import Jobs
         id = request.args.get('id', None)
         qs = Jobs.query.filter_by(id=int(id)).first()
         if qs:
@@ -117,7 +118,6 @@ def get_job():
 def get_proposal():
     try:
         job_dict = request.json
-        from models import Jobs
         qs = Jobs.query.filter_by(id=int(job_dict['job_id'])).first()
         if qs:
             description = description_format(qs.job_description)
@@ -148,7 +148,7 @@ def flag():
         flag = request.args.get('flag', None)
         from JobParser import flag_set
         flag_set(flag)
-        response = jsonify({'success': True, 'message': '', 'data':''})
+        response = jsonify({'success': True, 'message': '', 'data': ''})
         response.status_code = 200
         return response
     except Exception as e:
@@ -161,7 +161,6 @@ def flag():
 def bidding():
     try:
         job_dict = request.json
-        from models import Jobs
         with app.app_context():
             qs = Jobs.query.filter_by(id=int(job_dict['job_id'])).first()
             if qs:
@@ -198,7 +197,6 @@ def image():
     try:
         job_id = request.form.get('id')
         uploaded_file = request.files['file']
-        from models import Jobs
         with app.app_context():
             qs = Jobs.query.filter_by(id=int(job_id)).first()
             current_time = datetime.now()

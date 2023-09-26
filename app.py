@@ -37,7 +37,7 @@ class JobStatus(db.Model):
 
 
 class CustomJobView(ModelView):
-    column_list = ('id', 'job_title', 'posted_on', 'bidding_done', 'bid_SS', 'SS_upload_time', 'bid_time_difference')
+    column_list = ('id', 'job_title', 'posted_on', 'bid_SS', 'SS_upload_time', 'bid_time_difference')
     column_default_sort = ('id', True)
 
     def _format_image(self, context, model, bid_SS):

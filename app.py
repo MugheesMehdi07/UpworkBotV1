@@ -7,6 +7,10 @@ from datetime import datetime
 from flask_admin.contrib.sqla import ModelView
 from flask import url_for
 
+from flask_admin.contrib.sqla.filters import BaseSQLAFilter
+from sqlalchemy import and_
+from flask_admin.contrib.sqla.filters import DateTimeBetweenFilter
+from dateutil.relativedelta import relativedelta
 
 # ----------models defined ----------
 class Jobs(db.Model):
@@ -33,12 +37,105 @@ class JobStatus(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # ----------admin panel ---------
+# ----------admin panel ---------
+
+class TimeFilter(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        current_time = datetime.now()
+        if value == '2_hours_ago':
+            time_threshold = current_time - timedelta(hours=2)
+        elif value == '6_hours_ago':
+            time_threshold = current_time - timedelta(hours=6)
+        elif value == '12_hours_ago':
+            time_threshold = current_time - timedelta(hours=12)
+        else:
+            return query  # No filter
+
+        query = query.filter(self.column >= time_threshold)
+        return query
+
+    def operation(self):
+        return '2_hours_ago', '2 Hours Ago', '6_hours_ago', '6 Hours Ago', '12_hours_ago', '12 Hours Ago'
+
+
+class DateFilter(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        today = datetime.today()
+        if value == 'today':
+            query = query.filter(self.column >= today.replace(hour=0, minute=0, second=0, microsecond=0))
+        elif value == 'yesterday':
+            yesterday = today - timedelta(days=1)
+            query = query.filter(and_(self.column >= yesterday.replace(hour=0, minute=0, second=0, microsecond=0),
+                                      self.column < today.replace(hour=0, minute=0, second=0, microsecond=0)))
+        return query
+
+    def operation(self):
+        return 'today', 'Today'
+
+
+class LastWeekFilter(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        current_time = datetime.now()
+        last_week = current_time - timedelta(weeks=1)
+        query = query.filter(and_(self.column >= last_week, self.column < current_time))
+        return query
+
+    def operation(self):
+        return [
+            ('last_week', 'Last Week'),]
+
+class LastTwoWeekFilter(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        current_time = datetime.now()
+        last_two_week = current_time - timedelta(weeks=2)
+        query = query.filter(and_(self.column >= last_two_week, self.column < current_time))
+        return query
+
+    def operation(self):
+        return [
+            ('last_week', 'Last Two Week'),]
+
+
+class ThisMonthFilter(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        current_time = datetime.now()
+        first_day_of_month = current_time.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        query = query.filter(and_(self.column >= first_day_of_month, self.column < current_time))
+        return query
+
+    def operation(self):
+        return [
+            ('this_month', 'This Month'),
+        ]
+
+class LastMonthFilter(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        current_time = datetime.now()
+        first_day_of_current_month = current_time.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        first_day_of_last_month = (first_day_of_current_month - relativedelta(months=1)).replace(day=1)
+        query = query.filter(and_(self.column >= first_day_of_last_month, self.column < first_day_of_current_month))
+        return query
+
+    def operation(self):
+        return [
+            ('last_month', 'Last Month'),
+        ]
+
 
 
 class CustomJobView(ModelView):
     column_list = ('id', 'job_title', 'posted_on', 'bid_SS', 'SS_upload_time', 'bid_time_difference')
     column_default_sort = ('id', True)
+
+    column_filters = [
+        DateFilter(column=Jobs.posted_on, name='Date', options=(('today', 'Today'), ('yesterday', 'Yesterday'))),
+        TimeFilter(column=Jobs.posted_on, name='Time', options=(('2_hours_ago', '2 Hours Ago'), ('6_hours_ago', '6 Hours Ago'), ('12_hours_ago', '12 Hours Ago'))),
+        LastWeekFilter(column=Jobs.posted_on, name='Last Week'),
+        LastTwoWeekFilter(column=Jobs.posted_on, name='Last Two Weeks'),
+        DateTimeBetweenFilter(column=Jobs.posted_on, name='Custom DateTime Filter'),
+        ThisMonthFilter(column=Jobs.posted_on, name='This Month'),
+        LastMonthFilter(column=Jobs.posted_on, name='Last Month'),
+    ]
 
     def _format_image(self, context, model, bid_SS):
         if model.bid_SS:
@@ -48,10 +145,18 @@ class CustomJobView(ModelView):
                 f'<a href="{image_url}" target="_blank">{bid_SS}</a>')
         return ''
 
+    def _format_job_title(self, context, model, name):
+        job_title = model.job_title
+        job_link = model.job_link
+        if job_title and job_link:
+            return Markup(f'<a href="{job_link}" target="_blank">{job_title}</a>')
+        return job_title
+
 
 custom_job_view = CustomJobView(Jobs, db.session)
 
 custom_job_view.column_formatters = {
+    'job_title': lambda v, c, m, p: custom_job_view._format_job_title(c, m, 'job_title'),
     'bid_SS': lambda v, c, m, p: custom_job_view._format_image(v, m, 'bid_SS')
 }
 

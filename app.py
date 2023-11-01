@@ -81,8 +81,10 @@ class LastWeekFilter(BaseSQLAFilter):
         return query
 
     def operation(self):
-        return [
-            ('last_week', 'Last Week'),]
+        return 'last_week', 'Last Week'
+
+    def get_options(self, view):
+        return [(v[0], v[1]) for v in [self.operation()]]
 
 class LastTwoWeekFilter(BaseSQLAFilter):
     def apply(self, query, value, alias=None):
@@ -92,8 +94,10 @@ class LastTwoWeekFilter(BaseSQLAFilter):
         return query
 
     def operation(self):
-        return [
-            ('last_week', 'Last Two Week'),]
+        return 'last_two_week', 'Last Two Weeks'
+
+    def get_options(self, view):
+        return [self.operation()]
 
 
 class ThisMonthFilter(BaseSQLAFilter):
@@ -104,9 +108,10 @@ class ThisMonthFilter(BaseSQLAFilter):
         return query
 
     def operation(self):
-        return [
-            ('this_month', 'This Month'),
-        ]
+        return 'this_month', 'This Month'
+
+    def get_options(self, view):
+        return [self.operation()]
 
 class LastMonthFilter(BaseSQLAFilter):
     def apply(self, query, value, alias=None):
@@ -117,9 +122,10 @@ class LastMonthFilter(BaseSQLAFilter):
         return query
 
     def operation(self):
-        return [
-            ('last_month', 'Last Month'),
-        ]
+        return 'last_month', 'Last Month'
+
+    def get_options(self, view):
+        return [self.operation()]
 
 
 
@@ -132,9 +138,9 @@ class CustomJobView(ModelView):
         TimeFilter(column=Jobs.posted_on, name='Time', options=(('2_hours_ago', '2 Hours Ago'), ('6_hours_ago', '6 Hours Ago'), ('12_hours_ago', '12 Hours Ago'))),
         LastWeekFilter(column=Jobs.posted_on, name='Last Week'),
         LastTwoWeekFilter(column=Jobs.posted_on, name='Last Two Weeks'),
-        DateTimeBetweenFilter(column=Jobs.posted_on, name='Custom DateTime Filter'),
         ThisMonthFilter(column=Jobs.posted_on, name='This Month'),
         LastMonthFilter(column=Jobs.posted_on, name='Last Month'),
+        DateTimeBetweenFilter(column=Jobs.posted_on, name='Custom DateTime Filter'),
     ]
 
     def _format_image(self, context, model, bid_SS):

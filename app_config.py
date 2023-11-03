@@ -13,8 +13,8 @@ cors = CORS(app)
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///upworkbot.db'
 
 # for prod
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:123456@localhost:5432/upworkbot'
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:samourboy@localhost:5432/UpworkBotV1'
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:123456@localhost:5432/upworkbot'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:samourboy@localhost:5432/UpworkBotV1'
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)

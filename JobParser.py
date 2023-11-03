@@ -16,6 +16,8 @@ import discord as ds
 from discord.ext import commands
 from app import Jobs, db, JobStatus
 import time
+import threading
+import multiprocessing
 # from signals import notification
 
 
@@ -270,50 +272,98 @@ async def on_ready():
     print(f'We have logged in as {bot.user}')
 
 
+# def flag_set(flag):
+#     global discord
+#     discord = Discord(url=webhook_url)
+#     if flag == 'true':
+#         discord.post(content="Bidding Started")
+#     elif flag == 'false':
+#         discord.post(content="Bidding Stopped")
+
+# @bot.event
+# async def on_message(message):
+#     print(f'Message content: {message.content}')
+#     global flag
+
+#     if message.content.lower() == 'bidding started':
+#         flag = 'start'
+#     elif message.content.lower() == 'bidding stopped':
+#         flag = 'stop'
+
+
+# ------------------------------------------------------------------------------
 def flag_set(flag):
     global discord
-    discord = Discord(url=webhook_url)
     if flag == 'true':
         discord.post(content="Bidding Started")
     elif flag == 'false':
         discord.post(content="Bidding Stopped")
 
-@bot.event
-async def on_message(message):
-    print(f'Message content: {message.content}')
+def message_handler(message_content):
     global flag
 
-    if message.content.lower() == 'bidding started':
+    if message_content.lower() == 'bidding started':
         flag = 'start'
-    elif message.content.lower() == 'bidding stopped':
+        flag_set(flag)
+    elif message_content.lower() == 'bidding stopped':
         flag = 'stop'
+        flag_set(flag)
+
+
+discord = Discord(url=webhook_url)
+
+def message_thread():
+    while True:
+        try:
+            message_content = input("Enter a message: ")
+            message_handler(message_content)
+        except KeyboardInterrupt:
+            break
+
+message_thread = threading.Thread(target=message_thread)
+# --------------------------------------------------------------------------------------------
 
 
 async def run_bot():
     print('in run bot')
     await bot.start(discord_token)
 
+def run_bot_process():
+    # Start the bot asynchronously
+    asyncio.run(run_bot())
 
 def main():
     global discord
-    discord = Discord(url=webhook_url)
+    discord = Discord(url=webhook_url_test)
     # discord.post(content="Bidding Started")
+    bot_process = multiprocessing.Process(target=run_bot_process)
 
+    # Create and start threads
     thread1 = Thread(target=fetch_jobs)
     thread2 = Thread(target=process_jobs)
+
+    # Create and run the event loop
+    event_loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(event_loop)
+
+    # Start the bot as a task within the event loop
+    bot_task = event_loop.create_task(run_bot())
 
     # Start threads
     thread1.start()
     thread2.start()
 
-    # Start the bot asynchronously
-    asyncio.run(run_bot())
+    bot_process.start()
 
-    # Wait for both threads to finish
-    thread1.join()
-    thread2.join()
-
+    # try:
+    #     # Run the event loop indefinitely
+    #     event_loop.run_forever()
+    # except KeyboardInterrupt:
+    #     pass
+    # finally:
+    #     # Cancel the bot task
+    #     bot_task.cancel()
+    bot_process.join()
 
 if __name__ == "__main__":
     main()
-
